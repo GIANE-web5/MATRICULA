@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Aulas — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo"><h2>🎓 MatriculaIE</h2><span>Sistema de Gestión</span></div>
+        <div class="sidebar-user">
+            <div class="avatar" id="sidebar-avatar">A</div>
+            <div class="info"><p id="sidebar-name"></p><span id="sidebar-rol"></span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Principal</div>
+            <a href="index.html"><span class="icon">🏠</span> Dashboard</a>
+            <div class="nav-section">Mantenimiento</div>
+            <a href="alumnos.html"><span class="icon">👤</span> Alumnos</a>
+            <a href="aulas.html"><span class="icon">🏫</span> Aulas</a>
+            <a href="conceptos.html"><span class="icon">📋</span> Conceptos</a>
+            <div class="nav-section">Operaciones</div>
+            <a href="matricula.html"><span class="icon">📝</span> Matrícula</a>
+            <a href="pagos.html"><span class="icon">💰</span> Pagos</a>
+            <div class="nav-section">Seguridad</div>
+            <a href="usuarios.html"><span class="icon">👥</span> Usuarios</a>
+            <a href="permisos.html"><span class="icon">🔐</span> Permisos</a>
+
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+        </nav>
+        <div class="sidebar-bottom"><a href="#" onclick="logout()">🚪 Cerrar sesión</a></div>
+    </aside>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div><h1>Aulas</h1><div class="breadcrumb">Mantenimiento / Aulas</div></div>
+            <button class="btn btn-primary" onclick="abrirModal()">+ Nueva aula</button>
+        </div>
+
+        <div class="page-body">
+
+            <!-- Filtro por año -->
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-body" style="padding:14px 20px">
+                    <div style="display:flex;align-items:center;gap:16px">
+                        <label style="margin:0;white-space:nowrap">Año académico:</label>
+                        <select id="filtro-anio" onchange="cargarAulas()" style="width:180px">
+                            <option value="">Seleccione año...</option>
+                        </select>
+                        <span id="resumen-aulas" style="color:var(--text-muted);font-size:13px"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Listado de aulas</h2>
+                    <div class="search-bar">
+                        <input type="text" id="buscador" placeholder="Filtrar por nivel o sección..."
+                               oninput="filtrarTabla()">
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nivel</th>
+                                <th>Grado</th>
+                                <th>Sección</th>
+                                <th>Año</th>
+                                <th>Alumnos</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tabla-aulas">
+                            <tr>
+                                <td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">
+                                    Seleccione un año académico para ver las aulas
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NUEVA AULA -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Nueva aula</h3>
+            <button class="modal-close" onclick="cerrarModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-alert"></div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Año académico *</label>
+                    <select id="f-anio">
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nivel *</label>
+                    <select id="f-nivel" onchange="actualizarGrados()">
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Grado *</label>
+                    <select id="f-grado">
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Sección *</label>
+                    <select id="f-seccion">
+                        <option value="">Seleccione...</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Preview -->
+            <div id="preview-aula" style="display:none;margin-top:16px;
+           background:var(--bg);border-radius:8px;padding:14px;text-align:center">
+                <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">Aula a crear</p>
+                <strong id="preview-texto" style="font-size:16px;color:var(--primary)"></strong>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardar()">Guardar aula</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    session.check();
+    loadSidebarUser();
+    setActiveNav();
+    function logout() { session.clear(); location.href = 'login.html'; }
+
+    let todosAulas  = [];
+    let niveles     = [];
+
+    // Grados por nivel
+    const gradosPorNivel = {
+      'INICIAL':    [3, 4, 5],
+      'PRIMARIA':   [1, 2, 3, 4, 5, 6],
+      'SECUNDARIA': [1, 2, 3, 4, 5]
+    };
+
+    async function init() {
+      const [anios, nivelesData] = await Promise.all([
+        api.get('/anios').catch(() => []),
+        api.get('/niveles').catch(() => [])
+      ]);
+
+      niveles = nivelesData;
+
+      // Llenar año en filtro y modal
+      const filtro = document.getElementById('filtro-anio');
+      const fAnio  = document.getElementById('f-anio');
+      anios.forEach(a => {
+        filtro.innerHTML += `<option value="${a.idAnio}">${a.anio}</option>`;
+        fAnio.innerHTML  += `<option value="${a.idAnio}">${a.anio}</option>`;
+      });
+
+      // Llenar niveles en modal
+      const fNivel = document.getElementById('f-nivel');
+      niveles.forEach(n => {
+        fNivel.innerHTML += `<option value="${n.idNivel}">${n.nombre}</option>`;
+      });
+
+      // Si hay un año actual, seleccionarlo
+      if (anios.length > 0) {
+        filtro.value = anios[anios.length - 1].idAnio;
+        cargarAulas();
+      }
+    }
+
+    function actualizarGrados() {
+      const idNivel  = document.getElementById('f-nivel').value;
+      const nivel    = niveles.find(n => n.idNivel == idNivel);
+      const grados   = nivel ? (gradosPorNivel[nivel.nombre] || []) : [];
+      const fGrado   = document.getElementById('f-grado');
+      fGrado.innerHTML = '<option value="">Seleccione...</option>';
+      grados.forEach(g => fGrado.innerHTML += `<option value="${g}">${g}°</option>`);
+      actualizarPreview();
+    }
+
+    function actualizarPreview() {
+      const anioEl   = document.getElementById('f-anio');
+      const nivelEl  = document.getElementById('f-nivel');
+      const gradoEl  = document.getElementById('f-grado');
+      const secEl    = document.getElementById('f-seccion');
+      const preview  = document.getElementById('preview-aula');
+      const texto    = document.getElementById('preview-texto');
+
+      const anioTxt  = anioEl.options[anioEl.selectedIndex]?.text;
+      const nivelTxt = nivelEl.options[nivelEl.selectedIndex]?.text;
+      const gradoTxt = gradoEl.value ? `${gradoEl.value}°` : '';
+      const secTxt   = secEl.value;
+
+      if (nivelTxt && gradoTxt && secTxt) {
+        preview.style.display = 'block';
+        texto.textContent = `${nivelTxt} — ${gradoTxt} "${secTxt}" (${anioTxt})`;
+      } else {
+        preview.style.display = 'none';
+      }
+    }
+
+    // Escuchar cambios para preview
+    ['f-anio','f-grado','f-seccion'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', actualizarPreview);
+    });
+
+    async function cargarAulas() {
+      const idAnio = document.getElementById('filtro-anio').value;
+      if (!idAnio) return;
+
+      try {
+        todosAulas = await api.get(`/aulas?idAnio=${idAnio}`);
+        renderTabla(todosAulas);
+        document.getElementById('resumen-aulas').textContent =
+          `${todosAulas.length} aula${todosAulas.length !== 1 ? 's' : ''} registrada${todosAulas.length !== 1 ? 's' : ''}`;
+      } catch(e) {
+        toast('Error al cargar aulas', 'error');
+      }
+    }
+
+    function renderTabla(data) {
+      const tbody = document.getElementById('tabla-aulas');
+      if (!data.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">
+              No hay aulas registradas para este año
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map((a, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>
+            <span class="badge ${nivelBadge(a.nivel?.nombre)}">
+              ${a.nivel?.nombre || '—'}
+            </span>
+          </td>
+          <td>${a.grado}°</td>
+          <td><strong>${a.seccion}</strong></td>
+          <td>${a.anioAcademico?.anio || '—'}</td>
+          <td>
+            <span style="color:var(--text-muted);font-size:12px">Ver matrículas</span>
+          </td>
+          <td>
+            <span class="badge ${a.estado === 'A' ? 'badge-success' : 'badge-danger'}">
+              ${a.estado === 'A' ? 'Activa' : 'Inactiva'}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="eliminar(${a.idAula})">🗑 Eliminar</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function nivelBadge(nombre) {
+      if (!nombre) return 'badge-info';
+      if (nombre === 'INICIAL')    return 'badge-warning';
+      if (nombre === 'PRIMARIA')   return 'badge-info';
+      if (nombre === 'SECUNDARIA') return 'badge-success';
+      return 'badge-info';
+    }
+
+    function filtrarTabla() {
+      const texto = document.getElementById('buscador').value.toLowerCase();
+      const filtrados = todosAulas.filter(a =>
+        (a.nivel?.nombre || '').toLowerCase().includes(texto) ||
+        (a.seccion || '').toLowerCase().includes(texto) ||
+        String(a.grado).includes(texto)
+      );
+      renderTabla(filtrados);
+    }
+
+    function abrirModal() {
+      document.getElementById('modal-alert').innerHTML = '';
+      document.getElementById('preview-aula').style.display = 'none';
+      ['f-anio','f-nivel','f-grado','f-seccion'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('f-grado').innerHTML = '<option value="">Seleccione...</option>';
+
+      // Preseleccionar año del filtro
+      const idAnio = document.getElementById('filtro-anio').value;
+      if (idAnio) document.getElementById('f-anio').value = idAnio;
+
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-overlay').classList.remove('open');
+    }
+
+    async function guardar() {
+      const idAnio  = parseInt(document.getElementById('f-anio').value);
+      const idNivel = parseInt(document.getElementById('f-nivel').value);
+      const grado   = parseInt(document.getElementById('f-grado').value);
+      const seccion = document.getElementById('f-seccion').value;
+      const alerta  = document.getElementById('modal-alert');
+
+      if (!idAnio || !idNivel || !grado || !seccion) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+        return;
+      }
+
+      try {
+        await api.post('/aulas', { idAnio, idNivel, grado, seccion });
+        toast('Aula creada correctamente');
+        cerrarModal();
+        cargarAulas();
+      } catch(e) {
+        alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al guardar'}</div>`;
+      }
+    }
+
+    async function eliminar(id) {
+      if (!confirm('¿Está seguro de eliminar esta aula?')) return;
+      try {
+        await api.delete(`/aulas/${id}`);
+        toast('Aula eliminada');
+        cargarAulas();
+      } catch(e) {
+        toast('Error al eliminar', 'error');
+      }
+    }
+
+    init();
+</script>
+</body>
+</html>

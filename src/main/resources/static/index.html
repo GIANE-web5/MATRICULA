@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <h2>🎓 MatriculaIE</h2>
+            <span>Sistema de Gestión</span>
+        </div>
+        <div class="sidebar-user">
+            <div class="avatar" id="sidebar-avatar">A</div>
+            <div class="info">
+                <p id="sidebar-name">Cargando...</p>
+                <span id="sidebar-rol"></span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Principal</div>
+            <a href="index.html"><span class="icon">🏠</span> Dashboard</a>
+            <div class="nav-section">Mantenimiento</div>
+            <a href="alumnos.html"><span class="icon">👤</span> Alumnos</a>
+            <a href="aulas.html"><span class="icon">🏫</span> Aulas</a>
+            <a href="conceptos.html"><span class="icon">📋</span> Conceptos</a>
+            <div class="nav-section">Operaciones</div>
+            <a href="matricula.html"><span class="icon">📝</span> Matrícula</a>
+            <a href="pagos.html"><span class="icon">💰</span> Pagos</a>
+            <div class="nav-section">Seguridad</div>
+            <a href="usuarios.html"><span class="icon">👥</span> Usuarios</a>
+            <a href="permisos.html"><span class="icon">🔐</span> Permisos</a>
+
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="#" onclick="logout()">🚪 Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <h1>Dashboard</h1>
+                <div class="breadcrumb">Inicio / Dashboard</div>
+            </div>
+        </div>
+
+        <div class="page-body">
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">👤</div>
+                    <div>
+                        <h3 id="stat-alumnos">—</h3>
+                        <p>Alumnos registrados</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">📝</div>
+                    <div>
+                        <h3 id="stat-matriculas">—</h3>
+                        <p>Matrículas activas</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon amber">💰</div>
+                    <div>
+                        <h3 id="stat-recibos">—</h3>
+                        <p>Pagos realizados</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">🏫</div>
+                    <div>
+                        <h3 id="stat-aulas">—</h3>
+                        <p>Aulas registradas</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Año actual -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Año académico activo</h2>
+                </div>
+                <div class="card-body">
+                    <div id="anios-lista" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    const u = session.check();
+    loadSidebarUser();
+    setActiveNav();
+
+    function logout() {
+      session.clear();
+      location.href = 'login.html';
+    }
+
+    async function cargarDashboard() {
+      try {
+        const [alumnos, aulas, anios] = await Promise.all([
+          api.get('/alumnos/buscar/nombre?texto='),
+          api.get('/aulas?idAnio=1'),
+          api.get('/anios')
+        ]);
+
+        document.getElementById('stat-alumnos').textContent = alumnos.length;
+        document.getElementById('stat-aulas').textContent = aulas.length;
+
+        const lista = document.getElementById('anios-lista');
+        lista.innerHTML = anios.map(a => `
+          <div class="badge badge-info" style="font-size:14px;padding:6px 18px">
+            📅 ${a.anio} — ${a.descripcion || 'Año académico'}
+          </div>
+        `).join('');
+
+      } catch (e) {
+        toast('Error al cargar datos', 'error');
+      }
+    }
+
+    cargarDashboard();
+</script>
+</body>
+</html>

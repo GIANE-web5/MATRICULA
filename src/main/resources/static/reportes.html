@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reportes — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .reporte-tabs {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 20px;
+        }
+        .tab-btn {
+          padding: 9px 20px;
+          border-radius: var(--radius);
+          border: 1px solid var(--border);
+          background: var(--white);
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-muted);
+          transition: all 0.15s;
+        }
+        .tab-btn.active {
+          background: var(--primary);
+          color: #fff;
+          border-color: var(--primary);
+        }
+        .reporte-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        @media print {
+          .sidebar, .topbar, .reporte-tabs,
+          .reporte-header button, #filtros,
+          .sidebar-bottom { display: none !important; }
+          .main-content { margin-left: 0 !important; }
+          .page-body { padding: 0 !important; }
+          table { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo"><h2>🎓 MatriculaIE</h2><span>Sistema de Gestión</span></div>
+        <div class="sidebar-user">
+            <div class="avatar" id="sidebar-avatar">A</div>
+            <div class="info"><p id="sidebar-name"></p><span id="sidebar-rol"></span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Principal</div>
+            <a href="index.html"><span class="icon">🏠</span> Dashboard</a>
+            <div class="nav-section">Mantenimiento</div>
+            <a href="anios.html"><span class="icon">📅</span> Años académicos</a>
+            <a href="alumnos.html"><span class="icon">👤</span> Alumnos</a>
+            <a href="aulas.html"><span class="icon">🏫</span> Aulas</a>
+            <a href="conceptos.html"><span class="icon">📋</span> Conceptos</a>
+            <div class="nav-section">Operaciones</div>
+            <a href="matricula.html"><span class="icon">📝</span> Matrícula</a>
+            <a href="pagos.html"><span class="icon">💰</span> Pagos</a>
+            <div class="nav-section">Seguridad</div>
+            <a href="usuarios.html"><span class="icon">👥</span> Usuarios</a>
+            <a href="permisos.html"><span class="icon">🔐</span> Permisos</a>
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="#" onclick="logout()">🚪 Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div><h1>Reportes</h1>
+                <div class="breadcrumb">Reportes</div>
+            </div>
+        </div>
+
+        <div class="page-body">
+
+            <!-- Filtro año -->
+            <div class="card" style="margin-bottom:20px" id="filtros">
+                <div class="card-body" style="padding:14px 20px">
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                        <label style="margin:0;font-weight:600">Año académico:</label>
+                        <select id="filtro-anio" style="width:180px">
+                            <option value="">Seleccione...</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="generarReporte()">
+                            📊 Generar reporte
+                        </button>
+                        <button class="btn btn-outline" onclick="window.print()">
+                            🖨 Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="reporte-tabs">
+                <button class="tab-btn active" onclick="cambiarTab('matriculados', this)">
+                    📝 Alumnos matriculados
+                </button>
+                <button class="tab-btn" onclick="cambiarTab('pagos', this)">
+                    💰 Pagos realizados
+                </button>
+                <button class="tab-btn" onclick="cambiarTab('deudas', this)">
+                    ⚠ Deudas pendientes
+                </button>
+            </div>
+
+            <!-- Contenido reporte -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 id="titulo-reporte">Alumnos Matriculados</h2>
+                        <div id="subtitulo-reporte"
+                             style="font-size:12px;color:var(--text-muted);margin-top:2px"></div>
+                    </div>
+                    <div id="contador-reporte"
+                         style="font-size:13px;color:var(--text-muted)"></div>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div class="table-wrapper">
+                        <table id="tabla-reporte">
+                            <thead id="thead-reporte"></thead>
+                            <tbody id="tbody-reporte">
+                            <tr>
+                                <td colspan="10"
+                                    style="text-align:center;padding:40px;color:var(--text-muted)">
+                                    Seleccione un año y haga clic en "Generar reporte"
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Totales (solo para pagos y deudas) -->
+                <div id="card-totales" style="display:none;
+             padding:14px 20px;border-top:1px solid var(--border);
+             display:flex;justify-content:flex-end">
+                    <div style="text-align:right">
+                        <div style="font-size:12px;color:var(--text-muted)">Total</div>
+                        <div id="total-reporte"
+                             style="font-size:20px;font-weight:700;color:var(--primary)">
+                            S/ 0.00
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    session.check();
+    loadSidebarUser();
+    setActiveNav();
+    function logout() { session.clear(); location.href = 'login.html'; }
+
+    let tabActual = 'matriculados';
+
+    const config = {
+      matriculados: {
+        titulo:    'Alumnos Matriculados',
+        endpoint:  (id) => `/reportes/matriculados/${id}`,
+        columnas:  ['Alumno', 'Documento', 'Nivel', 'Grado', 'Sección', 'Fecha Matrícula'],
+        campos:    ['alumno', 'documento', 'nivel', 'grado', 'seccion', 'fecha'],
+        total:     false
+      },
+      pagos: {
+        titulo:    'Pagos Realizados',
+        endpoint:  (id) => `/reportes/pagos/${id}`,
+        columnas:  ['N° Boleta', 'Alumno', 'Documento', 'Concepto', 'Monto', 'Fecha Pago'],
+        campos:    ['boleta', 'alumno', 'documento', 'concepto', 'monto', 'fecha'],
+        total:     true,
+        campoTotal:'monto'
+      },
+      deudas: {
+        titulo:    'Deudas Pendientes',
+        endpoint:  (id) => `/reportes/deudas/${id}`,
+        columnas:  ['Alumno', 'Documento', 'Concepto', 'Monto Pendiente', 'Orden'],
+        campos:    ['alumno', 'documento', 'concepto', 'monto', 'orden'],
+        total:     true,
+        campoTotal:'monto'
+      }
+    };
+
+    async function init() {
+      const anios = await api.get('/anios').catch(() => []);
+      const sel   = document.getElementById('filtro-anio');
+      anios.forEach(a => {
+        sel.innerHTML += `<option value="${a.idAnio}">${a.anio}</option>`;
+      });
+      if (anios.length > 0)
+        sel.value = anios[anios.length - 1].idAnio;
+    }
+
+    function cambiarTab(tab, btn) {
+      tabActual = tab;
+      document.querySelectorAll('.tab-btn')
+        .forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      limpiarTabla();
+    }
+
+    function limpiarTabla() {
+      document.getElementById('thead-reporte').innerHTML = '';
+      document.getElementById('tbody-reporte').innerHTML = `
+        <tr><td colspan="10"
+          style="text-align:center;padding:40px;color:var(--text-muted)">
+          Haga clic en "Generar reporte"
+        </td></tr>`;
+      document.getElementById('contador-reporte').textContent = '';
+      document.getElementById('card-totales').style.display = 'none';
+      document.getElementById('subtitulo-reporte').textContent = '';
+    }
+
+    async function generarReporte() {
+      const idAnio = document.getElementById('filtro-anio').value;
+      if (!idAnio) { toast('Seleccione un año académico', 'error'); return; }
+
+      const anioTexto = document.getElementById('filtro-anio')
+        .options[document.getElementById('filtro-anio').selectedIndex].text;
+
+      const cfg = config[tabActual];
+
+      try {
+        const data = await api.get(cfg.endpoint(idAnio));
+
+        // Título y subtítulo
+        document.getElementById('titulo-reporte').textContent = cfg.titulo;
+        document.getElementById('subtitulo-reporte').textContent =
+          `Año académico ${anioTexto} — Generado: ${new Date().toLocaleString('es-PE')}`;
+        document.getElementById('contador-reporte').textContent =
+          `${data.length} registro${data.length !== 1 ? 's' : ''}`;
+
+        // Encabezado
+        document.getElementById('thead-reporte').innerHTML = `
+          <tr>${cfg.columnas.map(c => `<th>${c}</th>`).join('')}</tr>`;
+
+        // Cuerpo
+        if (!data.length) {
+          document.getElementById('tbody-reporte').innerHTML = `
+            <tr><td colspan="${cfg.columnas.length}"
+              style="text-align:center;padding:30px;color:var(--text-muted)">
+              No hay registros para mostrar
+            </td></tr>`;
+          return;
+        }
+
+        document.getElementById('tbody-reporte').innerHTML = data.map(row => `
+          <tr>${cfg.campos.map(campo => {
+            let val = row[campo] ?? '—';
+            if (campo === 'monto') val = `S/ ${parseFloat(val).toFixed(2)}`;
+            return `<td>${val}</td>`;
+          }).join('')}</tr>
+        `).join('');
+
+        // Total si aplica
+        if (cfg.total) {
+          const total = data.reduce((s, r) =>
+            s + parseFloat(r[cfg.campoTotal] || 0), 0);
+          document.getElementById('total-reporte').textContent =
+            `S/ ${total.toFixed(2)}`;
+          document.getElementById('card-totales').style.display = 'flex';
+        } else {
+          document.getElementById('card-totales').style.display = 'none';
+        }
+
+      } catch(e) {
+        toast('Error al generar el reporte', 'error');
+      }
+    }
+
+    init();
+</script>
+</body>
+</html>

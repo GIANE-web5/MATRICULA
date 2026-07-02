@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Usuarios — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo"><h2>🎓 MatriculaIE</h2><span>Sistema de Gestión</span></div>
+        <div class="sidebar-user">
+            <div class="avatar" id="sidebar-avatar">A</div>
+            <div class="info"><p id="sidebar-name"></p><span id="sidebar-rol"></span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Principal</div>
+            <a href="index.html"><span class="icon">🏠</span> Dashboard</a>
+            <div class="nav-section">Mantenimiento</div>
+            <a href="anios.html"><span class="icon">📅</span> Años académicos</a>
+            <a href="alumnos.html"><span class="icon">👤</span> Alumnos</a>
+            <a href="aulas.html"><span class="icon">🏫</span> Aulas</a>
+            <a href="conceptos.html"><span class="icon">📋</span> Conceptos</a>
+            <div class="nav-section">Operaciones</div>
+            <a href="matricula.html"><span class="icon">📝</span> Matrícula</a>
+            <a href="pagos.html"><span class="icon">💰</span> Pagos</a>
+            <div class="nav-section">Seguridad</div>
+            <a href="usuarios.html"><span class="icon">👥</span> Usuarios</a>
+            <a href="permisos.html"><span class="icon">🔐</span> Permisos</a>
+
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+        </nav>
+        <div class="sidebar-bottom"><a href="#" onclick="logout()">🚪 Cerrar sesión</a></div>
+    </aside>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div><h1>Usuarios</h1><div class="breadcrumb">Seguridad / Usuarios</div></div>
+            <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo usuario</button>
+        </div>
+
+        <div class="page-body">
+            <div class="card">
+                <div class="card-header"><h2>Listado de usuarios</h2></div>
+                <div class="card-body" style="padding:0">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre completo</th>
+                                <th>Usuario</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tabla-usuarios">
+                            <tr><td colspan="6" style="text-align:center;padding:30px;
+                    color:var(--text-muted)">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NUEVO USUARIO -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-titulo">Nuevo usuario</h3>
+            <button class="modal-close" onclick="cerrarModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-alert"></div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Nombre completo *</label>
+                    <input type="text" id="f-nombre" placeholder="Nombre completo">
+                </div>
+                <div class="form-group">
+                    <label>Usuario *</label>
+                    <input type="text" id="f-username" placeholder="Nombre de usuario">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña *</label>
+                    <input type="password" id="f-password" placeholder="Contraseña">
+                </div>
+                <div class="form-group full">
+                    <label>Rol *</label>
+                    <select id="f-rol">
+                        <option value="">Seleccione rol...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardar()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CAMBIAR CONTRASEÑA -->
+<div class="modal-overlay" id="modal-password">
+    <div class="modal" style="width:400px">
+        <div class="modal-header">
+            <h3>Cambiar contraseña</h3>
+            <button class="modal-close" onclick="cerrarModalPassword()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="pwd-alert"></div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Contraseña actual *</label>
+                <input type="password" id="pwd-actual" placeholder="Contraseña actual">
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Nueva contraseña *</label>
+                <input type="password" id="pwd-nueva" placeholder="Nueva contraseña">
+            </div>
+            <div class="form-group">
+                <label>Confirmar nueva contraseña *</label>
+                <input type="password" id="pwd-confirmar" placeholder="Confirmar contraseña">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModalPassword()">Cancelar</button>
+            <button class="btn btn-primary" onclick="cambiarPassword()">Cambiar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    session.check();
+    loadSidebarUser();
+    setActiveNav();
+    function logout() { session.clear(); location.href = 'login.html'; }
+
+    let roles        = [];
+    let idCambiandoPwd = null;
+
+    async function init() {
+      roles = await api.get('/roles').catch(() => []);
+      const sel = document.getElementById('f-rol');
+      roles.forEach(r => {
+        sel.innerHTML += `<option value="${r.idRol}">${r.nombre}</option>`;
+      });
+      cargarUsuarios();
+    }
+
+    async function cargarUsuarios() {
+      try {
+        const data = await api.get('/usuarios');
+        renderTabla(data);
+      } catch(e) {
+        toast('Error al cargar usuarios', 'error');
+      }
+    }
+
+    function renderTabla(data) {
+      const tbody = document.getElementById('tabla-usuarios');
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="6"
+          style="text-align:center;padding:30px;color:var(--text-muted)">
+          Sin usuarios registrados</td></tr>`;
+        return;
+      }
+
+      const usuLogin = session.get()?.username;
+
+      tbody.innerHTML = data.map((u, i) => {
+        const esSU      = u.rol?.nombre === 'SUPERUSUARIO';
+        const esMismo   = u.username === usuLogin;
+        const puedeBorrar = !esSU && !esMismo;
+
+        return `
+          <tr>
+            <td>${i + 1}</td>
+            <td><strong>${u.nombreCompleto}</strong></td>
+            <td>${u.username}</td>
+            <td>
+              <span class="badge ${rolBadge(u.rol?.nombre)}">
+                ${u.rol?.nombre || '—'}
+              </span>
+            </td>
+            <td>
+              <span class="badge ${u.estado === 'A' ? 'badge-success' : 'badge-danger'}">
+                ${u.estado === 'A' ? 'Activo' : 'Inactivo'}
+              </span>
+            </td>
+            <td style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm"
+                      onclick="abrirModalPassword(${u.idUsuario})">
+                🔑 Contraseña
+              </button>
+              ${puedeBorrar
+                ? `<button class="btn btn-danger btn-sm"
+                           onclick="eliminar(${u.idUsuario})">🗑</button>`
+                : `<span style="font-size:11px;color:var(--text-muted);
+                                padding:5px 8px">🔒 Protegido</span>`
+              }
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function rolBadge(nombre) {
+      if (nombre === 'SUPERUSUARIO') return 'badge-warning';
+      if (nombre === 'SECRETARIA')   return 'badge-info';
+      return 'badge-success';
+    }
+
+    function abrirModal() {
+      document.getElementById('modal-alert').innerHTML = '';
+      document.getElementById('f-nombre').value   = '';
+      document.getElementById('f-username').value = '';
+      document.getElementById('f-password').value = '';
+      document.getElementById('f-rol').value      = '';
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-overlay').classList.remove('open');
+    }
+
+    async function guardar() {
+      const body = {
+        nombreCompleto: document.getElementById('f-nombre').value.trim(),
+        username:       document.getElementById('f-username').value.trim(),
+        password:       document.getElementById('f-password').value,
+        idRol:          parseInt(document.getElementById('f-rol').value)
+      };
+      const alerta = document.getElementById('modal-alert');
+
+      if (!body.nombreCompleto || !body.username || !body.password || !body.idRol) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+        return;
+      }
+
+      try {
+        await api.post('/usuarios', body);
+        toast('Usuario creado correctamente');
+        cerrarModal();
+        cargarUsuarios();
+      } catch(e) {
+        alerta.innerHTML = `<div class="alert alert-error">
+          ✕ ${e.message || 'Error al guardar'}</div>`;
+      }
+    }
+
+    function abrirModalPassword(id) {
+      idCambiandoPwd = id;
+      document.getElementById('pwd-alert').innerHTML = '';
+      document.getElementById('pwd-actual').value    = '';
+      document.getElementById('pwd-nueva').value     = '';
+      document.getElementById('pwd-confirmar').value = '';
+      document.getElementById('modal-password').classList.add('open');
+    }
+
+    function cerrarModalPassword() {
+      document.getElementById('modal-password').classList.remove('open');
+      idCambiandoPwd = null;
+    }
+
+    async function cambiarPassword() {
+      const actual    = document.getElementById('pwd-actual').value;
+      const nueva     = document.getElementById('pwd-nueva').value;
+      const confirmar = document.getElementById('pwd-confirmar').value;
+      const alerta    = document.getElementById('pwd-alert');
+
+      if (!actual || !nueva || !confirmar) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+        return;
+      }
+
+      if (nueva !== confirmar) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ Las contraseñas no coinciden</div>';
+        return;
+      }
+
+      if (nueva.length < 4) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ La contraseña debe tener al menos 4 caracteres</div>';
+        return;
+      }
+
+      try {
+        await api.put(`/usuarios/${idCambiandoPwd}/cambiar-password`, {
+          passwordActual: actual,
+          passwordNueva:  nueva
+        });
+        toast('Contraseña actualizada correctamente');
+        cerrarModalPassword();
+      } catch(e) {
+        alerta.innerHTML = `<div class="alert alert-error">
+          ✕ ${e.message || 'Contraseña actual incorrecta'}</div>`;
+      }
+    }
+
+    async function eliminar(id) {
+      if (!confirm('¿Está seguro de eliminar este usuario?')) return;
+      try {
+        await api.delete(`/usuarios/${id}`);
+        toast('Usuario eliminado');
+        cargarUsuarios();
+      } catch(e) {
+        toast(e.message || 'Error al eliminar', 'error');
+      }
+    }
+
+    init();
+</script>
+</body>
+</html>

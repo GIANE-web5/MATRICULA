@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="logo">
+            <div style="font-size:40px">🎓</div>
+            <h1>Sistema de Matrícula</h1>
+            <p>Ingrese sus credenciales para continuar</p>
+        </div>
+
+        <div id="alert-login"></div>
+
+        <div class="form-group" style="margin-bottom:14px">
+            <label>Usuario</label>
+            <input type="text" id="username" placeholder="Ingrese su usuario" autocomplete="off">
+        </div>
+
+        <div class="form-group" style="margin-bottom:22px">
+            <label>Contraseña</label>
+            <input type="password" id="password" placeholder="Ingrese su contraseña">
+        </div>
+
+        <button class="btn btn-primary"
+                style="width:100%;justify-content:center;padding:10px"
+                onclick="login()">
+            Ingresar al sistema
+        </button>
+
+        <button class="btn btn-outline"
+                style="width:100%;justify-content:center;padding:10px;margin-top:10px"
+                onclick="abrirRegistro()">
+            + Registrar nuevo usuario
+        </button>
+
+        <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-muted)">
+            I.E. Sistema de Control de Matrículas
+        </p>
+    </div>
+</div>
+
+<!-- MODAL REGISTRO -->
+<div class="modal-overlay" id="modal-registro">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Registrar nuevo usuario</h3>
+            <button class="modal-close" onclick="cerrarRegistro()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="registro-alert"></div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Nombre completo *</label>
+                    <input type="text" id="r-nombre" placeholder="Nombre completo">
+                </div>
+                <div class="form-group">
+                    <label>Usuario *</label>
+                    <input type="text" id="r-username" placeholder="Nombre de usuario">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña *</label>
+                    <input type="password" id="r-password" placeholder="Contraseña">
+                </div>
+                <div class="form-group full">
+                    <label>Rol *</label>
+                    <select id="r-rol">
+                        <option value="">Seleccione rol...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarRegistro()">Cancelar</button>
+            <button class="btn btn-primary" onclick="registrar()">Registrar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    if (session.get()) location.href = 'index.html';
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') login();
+    });
+
+    async function login() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const alerta   = document.getElementById('alert-login');
+
+      if (!username || !password) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+        return;
+      }
+      try {
+        const usuario = await api.post('/usuarios/login', { username, password });
+        session.set(usuario);
+        location.href = 'index.html';
+      } catch(e) {
+        alerta.innerHTML = '<div class="alert alert-error">✕ Usuario o contraseña incorrectos</div>';
+      }
+    }
+
+    async function abrirRegistro() {
+      document.getElementById('registro-alert').innerHTML = '';
+      document.getElementById('r-nombre').value   = '';
+      document.getElementById('r-username').value = '';
+      document.getElementById('r-password').value = '';
+
+      try {
+        const roles = await api.get('/roles');
+        const sel   = document.getElementById('r-rol');
+        sel.innerHTML = '<option value="">Seleccione rol...</option>';
+        roles.forEach(r => {
+          sel.innerHTML += `<option value="${r.idRol}">${r.nombre}</option>`;
+        });
+      } catch(e) {}
+
+      document.getElementById('modal-registro').classList.add('open');
+    }
+
+    function cerrarRegistro() {
+      document.getElementById('modal-registro').classList.remove('open');
+    }
+
+    async function registrar() {
+      const body = {
+        nombreCompleto: document.getElementById('r-nombre').value.trim(),
+        username:       document.getElementById('r-username').value.trim(),
+        password:       document.getElementById('r-password').value,
+        idRol:          parseInt(document.getElementById('r-rol').value)
+      };
+      const alerta = document.getElementById('registro-alert');
+
+      if (!body.nombreCompleto || !body.username || !body.password || !body.idRol) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+        return;
+      }
+
+      try {
+        await api.post('/usuarios', body);
+        cerrarRegistro();
+        toast('Usuario registrado correctamente');
+      } catch(e) {
+        alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al registrar'}</div>`;
+      }
+    }
+</script>
+</body>
+</html>

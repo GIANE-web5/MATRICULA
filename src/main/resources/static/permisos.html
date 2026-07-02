@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Permisos — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ── TREE ── */
+        .tree-container {
+          font-size: 13px;
+          user-select: none;
+        }
+
+        .tree-node { margin: 2px 0; }
+
+        .tree-node-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 10px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: background 0.1s;
+        }
+
+        .tree-node-header:hover { background: #f0f4f8; }
+
+        .tree-node-header.is-parent {
+          background: #eef2f7;
+          font-weight: 700;
+          color: var(--primary);
+        }
+
+        .tree-node-header.is-parent:hover { background: #dde6f0; }
+
+        /* Flecha toggle */
+        .tree-toggle {
+          width: 16px; height: 16px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 10px;
+          color: var(--text-muted);
+          transition: transform 0.2s;
+          flex-shrink: 0;
+        }
+
+        .tree-toggle.open { transform: rotate(90deg); }
+        .tree-toggle.leaf { visibility: hidden; }
+
+        .tree-icon { font-size: 15px; flex-shrink: 0; }
+
+        .tree-label { flex: 1; }
+
+        /* Hijos */
+        .tree-children {
+          padding-left: 28px;
+          overflow: hidden;
+          max-height: 0;
+          transition: max-height 0.25s ease;
+        }
+
+        .tree-children.open { max-height: 2000px; }
+
+        /* Fila de permisos en hijos */
+        .tree-item-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 7px 10px;
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          margin: 3px 0;
+          background: #fff;
+        }
+
+        .tree-item-row:hover { background: #f8fafc; }
+
+        .tree-item-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex: 1;
+        }
+
+        .permisos-checks {
+          display: flex;
+          gap: 24px;
+          align-items: center;
+          flex-shrink: 0;
+        }
+
+        .check-col {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 3px;
+          width: 56px;
+        }
+
+        .check-col span {
+          font-size: 10px;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          font-weight: 600;
+        }
+
+        .check-col input[type="checkbox"] {
+          width: 16px; height: 16px;
+          cursor: pointer;
+          accent-color: var(--primary);
+        }
+
+        /* Header de columnas */
+        .checks-header {
+          display: flex;
+          justify-content: flex-end;
+          gap: 24px;
+          padding: 8px 10px 6px;
+          border-bottom: 2px solid var(--border);
+          margin-bottom: 8px;
+        }
+
+        .checks-header span {
+          width: 56px;
+          text-align: center;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        /* Línea conectora visual */
+        .tree-children .tree-node::before {
+          content: '';
+          display: inline-block;
+        }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo"><h2>🎓 MatriculaIE</h2><span>Sistema de Gestión</span></div>
+        <div class="sidebar-user">
+            <div class="avatar" id="sidebar-avatar">A</div>
+            <div class="info"><p id="sidebar-name"></p><span id="sidebar-rol"></span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Principal</div>
+            <a href="index.html"><span class="icon">🏠</span> Dashboard</a>
+            <div class="nav-section">Mantenimiento</div>
+            <a href="anios.html"><span class="icon">📅</span> Años académicos</a>
+            <a href="alumnos.html"><span class="icon">👤</span> Alumnos</a>
+            <a href="aulas.html"><span class="icon">🏫</span> Aulas</a>
+            <a href="conceptos.html"><span class="icon">📋</span> Conceptos</a>
+            <div class="nav-section">Operaciones</div>
+            <a href="matricula.html"><span class="icon">📝</span> Matrícula</a>
+            <a href="pagos.html"><span class="icon">💰</span> Pagos</a>
+            <div class="nav-section">Seguridad</div>
+            <a href="usuarios.html"><span class="icon">👥</span> Usuarios</a>
+            <a href="permisos.html"><span class="icon">🔐</span> Permisos</a>
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="#" onclick="logout()">🚪 Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <h1>Permisos por Rol</h1>
+                <div class="breadcrumb">Seguridad / Permisos</div>
+            </div>
+        </div>
+
+        <div class="page-body">
+
+            <!-- Selector de Rol -->
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-body" style="padding:16px 20px">
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                        <label style="margin:0;font-weight:600;white-space:nowrap">
+                            Seleccione el rol:
+                        </label>
+                        <select id="sel-rol" onchange="cargarPermisos()"
+                                style="width:220px">
+                            <option value="">Seleccione...</option>
+                        </select>
+                        <span id="info-rol"
+                              style="font-size:12px;color:var(--warning)"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Árbol de permisos -->
+            <div class="card" id="card-permisos" style="display:none">
+                <div class="card-header">
+                    <h2 id="titulo-permisos">Funcionalidades</h2>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-outline btn-sm"
+                                onclick="expandirTodo()">▶ Expandir todo</button>
+                        <button class="btn btn-outline btn-sm"
+                                onclick="colapsarTodo()">▼ Colapsar todo</button>
+                        <button class="btn btn-outline btn-sm"
+                                onclick="marcarTodo(true)">✔ Marcar todo</button>
+                        <button class="btn btn-outline btn-sm"
+                                onclick="marcarTodo(false)">✕ Desmarcar</button>
+                    </div>
+                </div>
+
+                <!-- Header columnas -->
+                <div style="padding:0 20px">
+                    <div class="checks-header">
+                        <span>Ver</span>
+                        <span>Insertar</span>
+                        <span>Editar</span>
+                        <span>Eliminar</span>
+                    </div>
+                </div>
+
+                <!-- Tree -->
+                <div class="card-body" style="padding:8px 20px 20px">
+                    <div class="tree-container" id="tree-root"></div>
+                </div>
+
+                <!-- Botón aplicar -->
+                <div style="padding:16px 20px;border-top:1px solid var(--border);
+                    display:flex;justify-content:space-between;align-items:center">
+          <span id="resumen-permisos"
+                style="font-size:12px;color:var(--text-muted)"></span>
+                    <button class="btn btn-primary" style="padding:10px 36px"
+                            onclick="aplicarPermisos()">
+                        ✔ Aplicar permisos
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    session.check();
+    loadSidebarUser();
+    setActiveNav();
+    function logout() { session.clear(); location.href = 'login.html'; }
+
+    let funcionalidades  = [];
+    let permisosActuales = [];
+    let idRolActual      = null;
+
+    // ── INIT ──────────────────────────────────────────────
+    async function init() {
+      const [roles, funcs] = await Promise.all([
+        api.get('/roles').catch(() => []),
+        api.get('/funcionalidades').catch(() => [])
+      ]);
+
+      funcionalidades = funcs;
+
+      const sel = document.getElementById('sel-rol');
+      roles.forEach(r => {
+        sel.innerHTML += `<option value="${r.idRol}">${r.nombre}</option>`;
+      });
+    }
+
+    // ── CARGAR PERMISOS DEL ROL ────────────────────────────
+    async function cargarPermisos() {
+      idRolActual = document.getElementById('sel-rol').value;
+      if (!idRolActual) return;
+
+      const rolNombre = document.getElementById('sel-rol')
+        .options[document.getElementById('sel-rol').selectedIndex].text;
+
+      document.getElementById('titulo-permisos').textContent =
+        `Funcionalidades — ${rolNombre}`;
+
+      const info = document.getElementById('info-rol');
+      info.textContent = rolNombre === 'SUPERUSUARIO'
+        ? '⚠ El Superusuario tiene acceso total al sistema'
+        : '';
+
+      try {
+        permisosActuales = await api.get(`/permisos/rol/${idRolActual}`);
+        buildTree();
+        document.getElementById('card-permisos').style.display = 'block';
+        actualizarResumen();
+      } catch(e) {
+        toast('Error al cargar permisos', 'error');
+      }
+    }
+
+    // ── CONSTRUIR EL TREE ─────────────────────────────────
+    function buildTree() {
+      const root    = document.getElementById('tree-root');
+      root.innerHTML = '';
+
+      // Separar padres e hijos
+      const padres = funcionalidades
+        .filter(f => !f.padre)
+        .sort((a, b) => a.orden - b.orden);
+
+      const hijos = funcionalidades
+        .filter(f => f.padre)
+        .sort((a, b) => a.orden - b.orden);
+
+      padres.forEach(padre => {
+        const hijosDelPadre = hijos.filter(
+          h => h.padre?.idFuncionalidad === padre.idFuncionalidad);
+
+        const nodo = crearNodoPadre(padre, hijosDelPadre);
+        root.appendChild(nodo);
+      });
+    }
+
+    // ── CREAR NODO PADRE (grupo expandible) ───────────────
+    function crearNodoPadre(padre, hijos) {
+      const div = document.createElement('div');
+      div.className = 'tree-node';
+      div.dataset.id = padre.idFuncionalidad;
+
+      // Header del padre — clickeable para expandir/colapsar
+      const header = document.createElement('div');
+      header.className = 'tree-node-header is-parent';
+      header.innerHTML = `
+        <span class="tree-toggle open">▶</span>
+        <span class="tree-icon">${padre.icono || '📁'}</span>
+        <span class="tree-label">${padre.nombre}</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400">
+          ${hijos.length} módulo${hijos.length !== 1 ? 's' : ''}
+        </span>
+      `;
+
+      // Click en el padre — toggle hijos
+      header.addEventListener('click', () => {
+        const toggle   = header.querySelector('.tree-toggle');
+        const children = div.querySelector('.tree-children');
+        const isOpen   = children.classList.contains('open');
+
+        if (isOpen) {
+          children.classList.remove('open');
+          toggle.classList.remove('open');
+        } else {
+          children.classList.add('open');
+          toggle.classList.add('open');
+        }
+      });
+
+      div.appendChild(header);
+
+      // Contenedor de hijos
+      const childrenDiv = document.createElement('div');
+      childrenDiv.className = 'tree-children open';
+
+      hijos.forEach(hijo => {
+        const item = crearNodoHijo(hijo);
+        childrenDiv.appendChild(item);
+      });
+
+      div.appendChild(childrenDiv);
+      return div;
+    }
+
+    // ── CREAR NODO HIJO (con checkboxes) ──────────────────
+    function crearNodoHijo(func) {
+      // Buscar permiso actual para este módulo
+      const permiso = permisosActuales.find(
+        p => p.funcionalidad?.idFuncionalidad === func.idFuncionalidad);
+
+      const ver      = permiso?.puedeVer      === 'S';
+      const insertar = permiso?.puedeInsertar === 'S';
+      const editar   = permiso?.puedeEditar   === 'S';
+      const eliminar = permiso?.puedeEliminar === 'S';
+
+      const div = document.createElement('div');
+      div.className = 'tree-node';
+
+      div.innerHTML = `
+        <div class="tree-item-row" data-id="${func.idFuncionalidad}">
+          <div class="tree-item-left">
+            <span class="tree-toggle leaf">▶</span>
+            <span class="tree-icon">${func.icono || '📄'}</span>
+            <span class="tree-label">${func.nombre}</span>
+            ${func.url
+              ? `<span style="font-size:11px;color:var(--text-muted)">
+                   — ${func.url}
+                 </span>`
+              : ''}
+          </div>
+          <div class="permisos-checks">
+            <div class="check-col">
+              <input type="checkbox" class="chk chk-ver"
+                     ${ver ? 'checked' : ''}
+                     onchange="onVerChange(this)">
+              <span>Ver</span>
+            </div>
+            <div class="check-col">
+              <input type="checkbox" class="chk chk-insertar"
+                     ${insertar ? 'checked' : ''}
+                     onchange="onAccionChange(this)">
+              <span>Insertar</span>
+            </div>
+            <div class="check-col">
+              <input type="checkbox" class="chk chk-editar"
+                     ${editar ? 'checked' : ''}
+                     onchange="onAccionChange(this)">
+              <span>Editar</span>
+            </div>
+            <div class="check-col">
+              <input type="checkbox" class="chk chk-eliminar"
+                     ${eliminar ? 'checked' : ''}
+                     onchange="onAccionChange(this)">
+              <span>Eliminar</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      return div;
+    }
+
+    // ── LÓGICA DE CHECKBOXES ──────────────────────────────
+
+    // Si desmarcas Ver → desmarcar todo
+    function onVerChange(chk) {
+      const row = chk.closest('.tree-item-row');
+      if (!chk.checked) {
+        row.querySelector('.chk-insertar').checked = false;
+        row.querySelector('.chk-editar').checked   = false;
+        row.querySelector('.chk-eliminar').checked = false;
+      }
+      actualizarResumen();
+    }
+
+    // Si marcas insertar/editar/eliminar → activar Ver
+    function onAccionChange(chk) {
+      if (chk.checked) {
+        chk.closest('.tree-item-row')
+           .querySelector('.chk-ver').checked = true;
+      }
+      actualizarResumen();
+    }
+
+    // ── MARCAR / DESMARCAR TODO ───────────────────────────
+    function marcarTodo(valor) {
+      document.querySelectorAll('.chk').forEach(c => c.checked = valor);
+      actualizarResumen();
+    }
+
+    // ── EXPANDIR / COLAPSAR TODO ──────────────────────────
+    function expandirTodo() {
+      document.querySelectorAll('.tree-children').forEach(c => {
+        c.classList.add('open');
+      });
+      document.querySelectorAll('.tree-toggle:not(.leaf)').forEach(t => {
+        t.classList.add('open');
+      });
+    }
+
+    function colapsarTodo() {
+      document.querySelectorAll('.tree-children').forEach(c => {
+        c.classList.remove('open');
+      });
+      document.querySelectorAll('.tree-toggle:not(.leaf)').forEach(t => {
+        t.classList.remove('open');
+      });
+    }
+
+    // ── RESUMEN ───────────────────────────────────────────
+    function actualizarResumen() {
+      const total    = document.querySelectorAll('.tree-item-row').length;
+      const activos  = document.querySelectorAll('.chk-ver:checked').length;
+      document.getElementById('resumen-permisos').textContent =
+        `${activos} de ${total} módulos con acceso habilitado`;
+    }
+
+    // ── APLICAR PERMISOS ─────────────────────────────────
+    async function aplicarPermisos() {
+  if (!idRolActual) return;
+
+  const filas    = document.querySelectorAll('.tree-item-row');
+  const permisos = [];
+
+  filas.forEach(fila => {
+    const idFunc   = parseInt(fila.dataset.id);
+    const ver      = fila.querySelector('.chk-ver').checked;
+    const insertar = fila.querySelector('.chk-insertar').checked;
+    const editar   = fila.querySelector('.chk-editar').checked;
+    const eliminar = fila.querySelector('.chk-eliminar').checked;
+
+    permisos.push({
+      idFuncionalidad: idFunc,
+      puedeVer:        ver,
+      puedeInsertar:   insertar,
+      puedeEditar:     editar,
+      puedeEliminar:   eliminar
+    });
+  });
+
+  console.log('Enviando permisos:', JSON.stringify(permisos)); // ver en consola
+
+  try {
+    const resultado = await api.post(`/permisos/aplicar/${idRolActual}`, permisos);
+    toast('Permisos aplicados correctamente');
+    actualizarResumen();
+  } catch(e) {
+    console.error('Error:', e.message);
+    toast(`Error: ${e.message}`, 'error');
+  }
+}
+
+    init();
+</script>
+</body>
+</html>

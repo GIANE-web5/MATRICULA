@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Pagos — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo"><h2>🎓 MatriculaIE</h2><span>Sistema de Gestión</span></div>
+        <div class="sidebar-user">
+            <div class="avatar" id="sidebar-avatar">A</div>
+            <div class="info"><p id="sidebar-name"></p><span id="sidebar-rol"></span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Principal</div>
+            <a href="index.html"><span class="icon">🏠</span> Dashboard</a>
+            <div class="nav-section">Mantenimiento</div>
+            <a href="alumnos.html"><span class="icon">👤</span> Alumnos</a>
+            <a href="aulas.html"><span class="icon">🏫</span> Aulas</a>
+            <a href="conceptos.html"><span class="icon">📋</span> Conceptos</a>
+            <div class="nav-section">Operaciones</div>
+            <a href="matricula.html"><span class="icon">📝</span> Matrícula</a>
+            <a href="pagos.html"><span class="icon">💰</span> Pagos</a>
+            <div class="nav-section">Seguridad</div>
+            <a href="usuarios.html"><span class="icon">👥</span> Usuarios</a>
+            <a href="permisos.html"><span class="icon">🔐</span> Permisos</a>
+
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+        </nav>
+        <div class="sidebar-bottom"><a href="#" onclick="logout()">🚪 Cerrar sesión</a></div>
+    </aside>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div><h1>Pagos</h1><div class="breadcrumb">Operaciones / Pagos</div></div>
+        </div>
+
+        <div class="page-body">
+            <!-- Selector -->
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-header"><h2>Buscar alumno</h2></div>
+                <div class="card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Año académico *</label>
+                            <select id="f-anio">
+                                <option value="">Seleccione año...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Alumno *</label>
+                            <div style="display:flex;gap:8px">
+                                <input type="text" id="f-alumno-nombre" placeholder="Buscar alumno..."
+                                       readonly style="flex:1;background:#f8fafc">
+                                <button class="btn btn-outline btn-sm" onclick="abrirModalAlumno()">🔍</button>
+                            </div>
+                            <input type="hidden" id="f-alumno-id">
+                        </div>
+                    </div>
+                    <div style="margin-top:14px">
+                        <button class="btn btn-primary" onclick="cargarDeudas()">Ver deudas</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de deudas -->
+            <div class="card" id="card-deudas" style="display:none">
+                <div class="card-header">
+                    <h2 id="titulo-deudas">Cuotas</h2>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Concepto</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                                <th>Acción</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tabla-deudas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal buscar alumno -->
+<div class="modal-overlay" id="modal-alumno">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Buscar alumno</h3>
+            <button class="modal-close" onclick="cerrarModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="text" placeholder="Nombre o documento..."
+                   oninput="filtrarAlumnos(this.value)"
+                   style="width:100%;margin-bottom:14px">
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Apellidos y nombres</th><th>Documento</th><th></th></tr></thead>
+                    <tbody id="lista-alumnos-modal"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal recibo -->
+<div class="modal-overlay" id="modal-recibo">
+    <div class="modal" style="width:400px">
+        <div class="modal-header">
+            <h3>✅ Recibo generado</h3>
+            <button class="modal-close" onclick="cerrarRecibo()">×</button>
+        </div>
+        <div class="modal-body" id="recibo-body" style="text-align:center"></div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="cerrarRecibo()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    session.check();
+    loadSidebarUser();
+    setActiveNav();
+    function logout() { session.clear(); location.href = 'login.html'; }
+
+    let todosAlumnos = [];
+
+    async function init() {
+      const anios = await api.get('/anios').catch(() => []);
+      const sel   = document.getElementById('f-anio');
+      anios.forEach(a => sel.innerHTML += `<option value="${a.idAnio}">${a.anio}</option>`);
+    }
+
+    async function abrirModalAlumno() {
+      todosAlumnos = await api.get('/alumnos/buscar/nombre?texto=').catch(() => []);
+      filtrarAlumnos('');
+      document.getElementById('modal-alumno').classList.add('open');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-alumno').classList.remove('open');
+    }
+
+    function cerrarRecibo() {
+      document.getElementById('modal-recibo').classList.remove('open');
+    }
+
+    function filtrarAlumnos(texto) {
+      const filtrados = todosAlumnos.filter(a =>
+        `${a.apPaterno} ${a.apMaterno} ${a.nombre} ${a.nroDocumento}`
+          .toLowerCase().includes(texto.toLowerCase())
+      );
+      document.getElementById('lista-alumnos-modal').innerHTML = filtrados.map(a => `
+        <tr>
+          <td>${a.apPaterno} ${a.apMaterno}, ${a.nombre}</td>
+          <td>${a.nroDocumento}</td>
+          <td>
+            <button class="btn btn-accent btn-sm"
+              onclick="seleccionarAlumno(${a.idAlumno},'${a.apPaterno} ${a.apMaterno} ${a.nombre}')">
+              Seleccionar
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function seleccionarAlumno(id, nombre) {
+      document.getElementById('f-alumno-id').value     = id;
+      document.getElementById('f-alumno-nombre').value = nombre;
+      cerrarModal();
+    }
+
+    async function cargarDeudas() {
+      const idAlumno = document.getElementById('f-alumno-id').value;
+      const idAnio   = document.getElementById('f-anio').value;
+      if (!idAlumno || !idAnio) { toast('Seleccione año y alumno', 'error'); return; }
+
+      try {
+        const cuotas = await api.get(`/pagos/deudas?idAlumno=${idAlumno}&idAnio=${idAnio}`);
+        const nombre = document.getElementById('f-alumno-nombre').value;
+        document.getElementById('titulo-deudas').textContent = `Cuotas de ${nombre}`;
+        document.getElementById('card-deudas').style.display = 'block';
+
+        let primeraPendiente = true;
+        document.getElementById('tabla-deudas').innerHTML = cuotas.map((c, i) => {
+          const pagado    = c.estadoPago === 'C';
+          const habilitado = !pagado && primeraPendiente;
+          if (!pagado && primeraPendiente) primeraPendiente = false;
+          if (pagado) primeraPendiente = true;
+
+          return `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${c.concepto?.descripcion || '—'}</td>
+              <td>S/ ${parseFloat(c.monto).toFixed(2)}</td>
+              <td>
+                <span class="badge ${pagado ? 'badge-success' : 'badge-warning'}">
+                  ${pagado ? 'Pagado' : 'Pendiente'}
+                </span>
+              </td>
+              <td>
+                ${pagado
+                  ? '<span style="color:var(--text-muted);font-size:12px">✔ Cancelado</span>'
+                  : habilitado
+                    ? `<button class="btn btn-success btn-sm" onclick="pagar(${c.idCuota}, '${c.concepto?.descripcion || ''}', ${c.monto})">💳 Pagar</button>`
+                    : '<span style="color:var(--text-muted);font-size:12px">🔒 Bloqueado</span>'
+                }
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch(e) {
+        toast('El alumno no tiene matrícula en este año', 'error');
+      }
+    }
+
+    async function pagar(idCuota, conceptoNombre, montoCuota) {
+      const idAlumno = parseInt(document.getElementById('f-alumno-id').value);
+      const idAnio   = parseInt(document.getElementById('f-anio').value);
+
+      const alumnoNombre = document.getElementById('f-alumno-nombre').value;
+      const anioSel      = document.getElementById('f-anio');
+      const anioTexto    = anioSel.options[anioSel.selectedIndex]?.text || '';
+
+      if (!confirm('¿Confirma el pago de esta cuota?')) return;
+
+      try {
+        const recibo = await api.post('/pagos/pagar', { idAlumno, idAnio, idCuota });
+        mostrarRecibo(recibo, alumnoNombre, anioTexto, conceptoNombre, montoCuota);
+        cargarDeudas();
+      } catch(e) {
+        toast(e.message || 'Error al procesar el pago', 'error');
+      }
+    }
+
+    function mostrarRecibo(r, alumnoNombre, anioTexto, conceptoNombre, montoCuota) {
+      const fechaPago = r.fecPago || new Date().toLocaleDateString('es-PE');
+      const montoReal = r.montoPagado || montoCuota;
+      const nroBoleta = r.nroBoleta || 'S/N';
+
+      document.getElementById('recibo-body').innerHTML = `
+        <div style="padding:6px 0">
+
+          <div style="text-align:center;margin-bottom:18px">
+            <div style="font-size:40px;margin-bottom:6px">🧾</div>
+            <h2 style="font-size:17px;margin-bottom:2px">Boleta N° ${nroBoleta}</h2>
+            <p style="color:var(--text-muted);font-size:12px">Pago registrado exitosamente</p>
+          </div>
+
+          <!-- Datos del alumno -->
+          <div style="background:var(--bg);border-radius:8px; padding:14px 16px;margin-bottom:12px">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px; color:var(--text-muted);font-weight:700;margin-bottom:10px">
+              Datos del alumno
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+              <span style="color:var(--text-muted)">Nombre completo</span>
+              <strong style="text-align:right;max-width:65%">
+                ${alumnoNombre}
+              </strong>
+            </div>
+          </div>
+
+          <!-- Detalle del pago -->
+          <div style="background:var(--bg);border-radius:8px;padding:14px 16px">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px; color:var(--text-muted);font-weight:700;margin-bottom:10px">
+              Detalle del pago
+            </div>
+            <div style="display:flex;justify-content:space-between; margin-bottom:7px;font-size:13px">
+              <span style="color:var(--text-muted)">Concepto</span>
+              <strong style="text-align:right;max-width:65%">
+                ${conceptoNombre || 'Cuota de matrícula'}
+              </strong>
+            </div>
+            <div style="display:flex;justify-content:space-between; margin-bottom:7px;font-size:13px">
+              <span style="color:var(--text-muted)">Año académico</span>
+              <strong>${anioTexto}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between; margin-bottom:7px;font-size:13px">
+              <span style="color:var(--text-muted)">Fecha</span>
+              <strong>${fechaPago}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between; padding-top:10px;margin-top:6px; border-top:2px solid var(--border);font-size:14px">
+              <span style="font-weight:700">Total pagado</span>
+              <strong style="font-size:20px;color:var(--success)">
+                S/ ${parseFloat(montoReal).toFixed(2)}
+              </strong>
+            </div>
+          </div>
+
+        </div>
+      `;
+      document.getElementById('modal-recibo').classList.add('open');
+    }
+
+    // Inicializar al cargar la página
+    init();
+</script>
+</body>
+</html>

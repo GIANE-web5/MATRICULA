@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Matrícula — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo"><h2>🎓 MatriculaIE</h2><span>Sistema de Gestión</span></div>
+        <div class="sidebar-user">
+            <div class="avatar" id="sidebar-avatar">A</div>
+            <div class="info"><p id="sidebar-name"></p><span id="sidebar-rol"></span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Principal</div>
+            <a href="index.html"><span class="icon">🏠</span> Dashboard</a>
+            <div class="nav-section">Mantenimiento</div>
+            <a href="alumnos.html"><span class="icon">👤</span> Alumnos</a>
+            <a href="aulas.html"><span class="icon">🏫</span> Aulas</a>
+            <a href="conceptos.html"><span class="icon">📋</span> Conceptos</a>
+            <div class="nav-section">Operaciones</div>
+            <a href="matricula.html"><span class="icon">📝</span> Matrícula</a>
+            <a href="pagos.html"><span class="icon">💰</span> Pagos</a>
+            <div class="nav-section">Seguridad</div>
+            <a href="usuarios.html"><span class="icon">👥</span> Usuarios</a>
+            <a href="permisos.html"><span class="icon">🔐</span> Permisos</a>
+
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+        </nav>
+        <div class="sidebar-bottom"><a href="#" onclick="logout()">🚪 Cerrar sesión</a></div>
+    </aside>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div><h1>Matrícula</h1><div class="breadcrumb">Operaciones / Matrícula</div></div>
+        </div>
+
+        <div class="page-body">
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-header"><h2>Nueva matrícula</h2></div>
+                <div class="card-body">
+                    <div id="form-alert"></div>
+                    <div class="form-grid cols-3">
+                        <div class="form-group">
+                            <label>Año académico *</label>
+                            <select id="f-anio" onchange="cargarAulas()">
+                                <option value="">Seleccione año...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Alumno *</label>
+                            <div style="display:flex;gap:8px">
+                                <input type="text" id="f-alumno-nombre" placeholder="Buscar alumno..." readonly
+                                       style="flex:1;background:#f8fafc">
+                                <button class="btn btn-outline btn-sm" onclick="abrirModalAlumno()">🔍</button>
+                            </div>
+                            <input type="hidden" id="f-alumno-id">
+                        </div>
+                        <div class="form-group">
+                            <label>Aula *</label>
+                            <div style="display:flex;gap:8px">
+                                <input type="text" id="f-aula-nombre" placeholder="Buscar aula..." readonly
+                                       style="flex:1;background:#f8fafc">
+                                <button class="btn btn-outline btn-sm" onclick="abrirModalAula()">🔍</button>
+                            </div>
+                            <input type="hidden" id="f-aula-id">
+                        </div>
+                    </div>
+                    <div style="margin-top:18px;display:flex;justify-content:flex-end">
+                        <button class="btn btn-primary" onclick="matricular()">📝 Matricular</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-alumno">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Buscar alumno</h3>
+            <button class="modal-close" onclick="cerrarModalAlumno()">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="text" placeholder="Buscar por nombre o documento..."
+                   oninput="filtrarAlumnos(this.value)"
+                   style="width:100%;margin-bottom:14px">
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Apellidos y nombres</th><th>Documento</th><th></th></tr></thead>
+                    <tbody id="lista-alumnos-modal"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-aula">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Seleccionar aula</h3>
+            <button class="modal-close" onclick="cerrarModalAula()">×</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Nivel</th>
+                        <th>Grado</th>
+                        <th>Sección</th>
+                        <th>Alumnos</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody id="lista-aulas-modal"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-confirmacion">
+    <div class="modal" style="width:440px">
+        <div class="modal-header" style="background:var(--primary);border-radius:12px 12px 0 0">
+            <h3 style="color:#fff">✅ Matrícula Registrada</h3>
+            <button class="modal-close" onclick="cerrarConfirmacion()"
+                    style="color:#fff">×</button>
+        </div>
+        <div class="modal-body" style="text-align:center">
+            <div style="font-size:52px;margin:10px 0 14px">🎓</div>
+            <h2 style="font-size:17px;color:var(--primary);margin-bottom:20px">
+                Matrícula registrada exitosamente
+            </h2>
+            <div id="detalle-matricula"
+                 style="background:var(--bg);border-radius:8px;
+              padding:18px;text-align:left;font-size:13px">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" style="width:100%;justify-content:center"
+                    onclick="cerrarConfirmacion()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    session.check();
+    loadSidebarUser();
+    setActiveNav();
+    function logout() { session.clear(); location.href = 'login.html'; }
+
+    let todosAlumnos = [];
+    let todasAulas   = [];
+
+    async function init() {
+      const anios = await api.get('/anios').catch(() => []);
+      const sel   = document.getElementById('f-anio');
+      anios.forEach(a => sel.innerHTML += `<option value="${a.idAnio}">${a.anio}</option>`);
+    }
+
+    async function cargarAulas() {
+      const idAnio = document.getElementById('f-anio').value;
+      if (!idAnio) return;
+      todasAulas = await api.get(`/aulas?idAnio=${idAnio}`).catch(() => []);
+    }
+
+    async function abrirModalAlumno() {
+      todosAlumnos = await api.get('/alumnos/buscar/nombre?texto=').catch(() => []);
+      filtrarAlumnos('');
+      document.getElementById('modal-alumno').classList.add('open');
+    }
+
+    function cerrarModalAlumno() {
+      document.getElementById('modal-alumno').classList.remove('open');
+    }
+
+    function filtrarAlumnos(texto) {
+      const filtrados = todosAlumnos.filter(a =>
+        `${a.apPaterno} ${a.apMaterno} ${a.nombre} ${a.nroDocumento}`
+          .toLowerCase().includes(texto.toLowerCase())
+      );
+      const tbody = document.getElementById('lista-alumnos-modal');
+      tbody.innerHTML = filtrados.map(a => `
+        <tr>
+          <td>${a.apPaterno} ${a.apMaterno}, ${a.nombre}</td>
+          <td>${a.nroDocumento}</td>
+          <td>
+            <button class="btn btn-accent btn-sm"
+              onclick="seleccionarAlumno(${a.idAlumno}, '${a.apPaterno} ${a.apMaterno} ${a.nombre}')">
+              Seleccionar
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function seleccionarAlumno(id, nombre) {
+      document.getElementById('f-alumno-id').value      = id;
+      document.getElementById('f-alumno-nombre').value  = nombre;
+      cerrarModalAlumno();
+    }
+
+    function abrirModalAula() {
+      if (!todasAulas.length) { toast('Primero seleccione el año académico', 'error'); return; }
+      const tbody = document.getElementById('lista-aulas-modal');
+      tbody.innerHTML = todasAulas.map(a => `
+        <tr>
+          <td>${a.nivel?.nombre || '—'}</td>
+          <td>${a.grado}°</td>
+          <td>${a.seccion}</td>
+          <td><span class="badge badge-info">Ver cupos</span></td>
+          <td>
+            <button class="btn btn-accent btn-sm"
+              onclick="seleccionarAula(${a.idAula}, '${a.nivel?.nombre || ''} ${a.grado}° ${a.seccion}')">
+              Seleccionar
+            </button>
+          </td>
+        </tr>
+      `).join('');
+      document.getElementById('modal-aula').classList.add('open');
+    }
+
+    function cerrarModalAula() {
+      document.getElementById('modal-aula').classList.remove('open');
+    }
+
+    function seleccionarAula(id, nombre) {
+      document.getElementById('f-aula-id').value    = id;
+      document.getElementById('f-aula-nombre').value = nombre;
+      cerrarModalAula();
+    }
+
+    async function matricular() {
+      const idAnio   = parseInt(document.getElementById('f-anio').value);
+      const idAlumno = parseInt(document.getElementById('f-alumno-id').value);
+      const idAula   = parseInt(document.getElementById('f-aula-id').value);
+      const alerta   = document.getElementById('form-alert');
+
+      if (!idAnio || !idAlumno || !idAula) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+        return;
+      }
+
+      try {
+        // 1. Guardar la matrícula en el backend
+        await api.post('/matriculas', { idAnio, idAlumno, idAula });
+
+        // 2. Extraer datos directamente de la vista para la ventana flotante
+        const alumnoNombre = document.getElementById('f-alumno-nombre').value;
+        const aulaNombre   = document.getElementById('f-aula-nombre').value;
+        const anioSel      = document.getElementById('f-anio');
+        const anioTexto    = anioSel.options[anioSel.selectedIndex]?.text || '';
+
+        // 3. Dibujar el interior del modal de éxito
+        document.getElementById('detalle-matricula').innerHTML = `
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;
+                      color:var(--text-muted);margin-bottom:12px;font-weight:700">
+            Resumen de Matrícula
+          </div>
+          <div style="display:flex;justify-content:space-between;
+                      padding:8px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text-muted)">Alumno</span>
+            <strong style="text-align:right;max-width:65%">${alumnoNombre}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;
+                      padding:8px 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text-muted)">Aula asignada</span>
+            <strong style="text-align:right">${aulaNombre}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0">
+            <span style="color:var(--text-muted)">Año académico</span>
+            <strong>${anioTexto}</strong>
+          </div>
+        `;
+
+        // 4. Abrir la ventana flotante y limpiar alertas
+        document.getElementById('modal-confirmacion').classList.add('open');
+        alerta.innerHTML = '';
+
+        // 5. Limpiar los campos para una nueva matrícula
+        document.getElementById('f-alumno-id').value     = '';
+        document.getElementById('f-alumno-nombre').value = '';
+        document.getElementById('f-aula-id').value       = '';
+        document.getElementById('f-aula-nombre').value   = '';
+
+      } catch(e) {
+        alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al procesar la matrícula'}</div>`;
+      }
+    }
+
+    function cerrarConfirmacion() {
+      document.getElementById('modal-confirmacion').classList.remove('open');
+    }
+
+    init();
+</script>
+</body>
+</html>

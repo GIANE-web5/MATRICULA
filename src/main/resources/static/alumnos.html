@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Alumnos — Sistema de Matrícula</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo"><h2>🎓 MatriculaIE</h2><span>Sistema de Gestión</span></div>
+        <div class="sidebar-user">
+            <div class="avatar" id="sidebar-avatar">A</div>
+            <div class="info"><p id="sidebar-name"></p><span id="sidebar-rol"></span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Principal</div>
+            <a href="index.html"><span class="icon">🏠</span> Dashboard</a>
+            <div class="nav-section">Mantenimiento</div>
+            <a href="alumnos.html"><span class="icon">👤</span> Alumnos</a>
+            <a href="aulas.html"><span class="icon">🏫</span> Aulas</a>
+            <a href="conceptos.html"><span class="icon">📋</span> Conceptos</a>
+            <div class="nav-section">Operaciones</div>
+            <a href="matricula.html"><span class="icon">📝</span> Matrícula</a>
+            <a href="pagos.html"><span class="icon">💰</span> Pagos</a>
+            <div class="nav-section">Seguridad</div>
+            <a href="usuarios.html"><span class="icon">👥</span> Usuarios</a>
+            <a href="permisos.html"><span class="icon">🔐</span> Permisos</a>
+
+            <div class="nav-section">Reportes</div>
+            <a href="reportes.html"><span class="icon">📊</span> Reportes</a>
+        </nav>
+        <div class="sidebar-bottom"><a href="#" onclick="logout()">🚪 Cerrar sesión</a></div>
+    </aside>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div><h1>Alumnos</h1><div class="breadcrumb">Mantenimiento / Alumnos</div></div>
+            <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo alumno</button>
+        </div>
+
+        <div class="page-body">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Listado de alumnos</h2>
+                    <div class="search-bar">
+                        <input type="text" id="buscador" placeholder="Buscar por nombre..." oninput="buscar()">
+                        <input type="text" id="buscadorDoc" placeholder="Buscar por documento..." oninput="buscarDoc()">
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Apellidos y nombres</th>
+                                <th>Tipo doc.</th>
+                                <th>N° documento</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tabla-alumnos">
+                            <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-titulo">Nuevo alumno</h3>
+            <button class="modal-close" onclick="cerrarModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-alert"></div>
+            <!-- Dentro del modal-body, reemplaza el form-grid -->
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Apellido paterno * (máx. 10 letras)</label>
+                    <input type="text" id="f-apPaterno" placeholder="Apellido paterno"
+                           maxlength="10" oninput="soloLetras(this)">
+                </div>
+                <div class="form-group">
+                    <label>Apellido materno * (máx. 10 letras)</label>
+                    <input type="text" id="f-apMaterno" placeholder="Apellido materno"
+                           maxlength="10" oninput="soloLetras(this)">
+                </div>
+                <div class="form-group full">
+                    <label>Nombres * (máx. 20 letras)</label>
+                    <input type="text" id="f-nombre" placeholder="Nombres completos"
+                           maxlength="20" oninput="soloLetras(this)">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de documento *</label>
+                    <select id="f-tipoDoc" onchange="ajustarDocumento()">
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>N° de documento *</label>
+                    <input type="text" id="f-nroDoc" placeholder="Número de documento">
+                </div>
+                <div class="form-group">
+                    <label>Fecha de nacimiento</label>
+                    <input type="date" id="f-fecNac">
+                </div>
+                <div class="form-group">
+                    <label>Sexo</label>
+                    <select id="f-sexo">
+                        <option value="">Seleccione...</option>
+                        <option value="M">Masculino</option>
+                        <option value="F">Femenino</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardar()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/api.js"></script>
+<script>
+    session.check();
+    loadSidebarUser();
+    setActiveNav();
+
+    let editandoId = null;
+    let tiposDocs  = [];
+
+    function logout() { session.clear(); location.href = 'login.html'; }
+
+    async function cargarTiposDocs() {
+      tiposDocs = await api.get('/alumnos/../tipos-documento') .catch(() => []);
+      // usamos endpoint directo
+      try {
+        const resp = await fetch('http://localhost:8080/api/tipos-documento');
+        tiposDocs  = await resp.json();
+        const sel  = document.getElementById('f-tipoDoc');
+        tiposDocs.forEach(t => {
+          sel.innerHTML += `<option value="${t.idTipoDoc}">${t.descripcion}</option>`;
+        });
+      } catch(e) {}
+    }
+
+    async function cargarAlumnos(texto = '') {
+      try {
+        const data = await api.get(`/alumnos/buscar/nombre?texto=${encodeURIComponent(texto)}`);
+        renderTabla(data);
+      } catch(e) {
+        toast('Error al cargar alumnos', 'error');
+      }
+    }
+
+    function renderTabla(data) {
+      const tbody = document.getElementById('tabla-alumnos');
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Sin resultados</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map((a, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${a.apPaterno} ${a.apMaterno}</strong>, ${a.nombre}</td>
+          <td>${a.tipoDocumento?.descripcion || '—'}</td>
+          <td>${a.nroDocumento}</td>
+          <td><span class="badge ${a.estado === 'A' ? 'badge-success' : 'badge-danger'}">
+            ${a.estado === 'A' ? 'Activo' : 'Inactivo'}
+          </span></td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="editar(${a.idAlumno})">✏ Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminar(${a.idAlumno})">🗑</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    let buscarTimer;
+    function buscar() {
+      clearTimeout(buscarTimer);
+      buscarTimer = setTimeout(() => cargarAlumnos(document.getElementById('buscador').value), 350);
+    }
+
+    async function buscarDoc() {
+      const doc = document.getElementById('buscadorDoc').value.trim();
+      if (!doc) { cargarAlumnos(); return; }
+      try {
+        const data = await api.get(`/alumnos/buscar/documento?doc=${encodeURIComponent(doc)}`);
+        renderTabla(data);
+      } catch(e) {}
+    }
+
+    function abrirModal(id = null) {
+      editandoId = id;
+      document.getElementById('modal-titulo').textContent = id ? 'Editar alumno' : 'Nuevo alumno';
+      document.getElementById('modal-alert').innerHTML = '';
+      limpiarForm();
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-overlay').classList.remove('open');
+      editandoId = null;
+    }
+
+    function limpiarForm() {
+      ['f-apPaterno','f-apMaterno','f-nombre','f-nroDoc','f-fecNac'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('f-tipoDoc').value = '';
+      document.getElementById('f-sexo').value = '';
+    }
+    function soloLetras(input) {
+  input.value = input.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+}
+
+function ajustarDocumento() {
+  const sel      = document.getElementById('f-tipoDoc');
+  const texto    = sel.options[sel.selectedIndex]?.text.toUpperCase() || '';
+  const nroDoc   = document.getElementById('f-nroDoc');
+
+  nroDoc.value = '';
+
+  if (texto.includes('DNI')) {
+    nroDoc.maxLength  = 8;
+    nroDoc.pattern    = '[0-9]{8}';
+    nroDoc.placeholder = '8 dígitos numéricos';
+    nroDoc.oninput = () => {
+      nroDoc.value = nroDoc.value.replace(/\D/g, '').slice(0, 8);
+    };
+  } else if (texto.includes('CARNET') || texto.includes('EXTRANJERIA')) {
+    nroDoc.maxLength  = 9;
+    nroDoc.pattern    = '[0-9]{9}';
+    nroDoc.placeholder = '9 dígitos numéricos';
+    nroDoc.oninput = () => {
+      nroDoc.value = nroDoc.value.replace(/\D/g, '').slice(0, 9);
+    };
+  } else if (texto.includes('PASAPORTE')) {
+    nroDoc.maxLength  = 9;
+    nroDoc.pattern    = '[a-zA-Z0-9]{9}';
+    nroDoc.placeholder = '9 caracteres alfanuméricos';
+    nroDoc.oninput = () => {
+      nroDoc.value = nroDoc.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 9).toUpperCase();
+    };
+  } else {
+    nroDoc.maxLength  = 20;
+    nroDoc.placeholder = 'Número de documento';
+    nroDoc.oninput = null;
+  }
+}
+
+function validarDocumento() {
+  const sel    = document.getElementById('f-tipoDoc');
+  const texto  = sel.options[sel.selectedIndex]?.text.toUpperCase() || '';
+  const nroDoc = document.getElementById('f-nroDoc').value.trim();
+
+  if (texto.includes('DNI')) {
+    if (!/^\d{8}$/.test(nroDoc)) return 'El DNI debe tener exactamente 8 dígitos';
+  } else if (texto.includes('CARNET') || texto.includes('EXTRANJERIA')) {
+    if (!/^\d{9}$/.test(nroDoc)) return 'El C.E. debe tener exactamente 9 dígitos';
+  } else if (texto.includes('PASAPORTE')) {
+    if (!/^[a-zA-Z0-9]{9}$/.test(nroDoc)) return 'El pasaporte debe tener exactamente 9 caracteres alfanuméricos';
+  }
+  return null;
+}
+
+    async function editar(id) {
+      try {
+        const a = await api.get(`/alumnos/${id}`);
+        abrirModal(id);
+        document.getElementById('f-apPaterno').value = a.apPaterno;
+        document.getElementById('f-apMaterno').value = a.apMaterno;
+        document.getElementById('f-nombre').value    = a.nombre;
+        document.getElementById('f-nroDoc').value    = a.nroDocumento;
+        document.getElementById('f-tipoDoc').value   = a.tipoDocumento?.idTipoDoc || '';
+        document.getElementById('f-sexo').value      = a.sexo || '';
+        if (a.fecNacimiento) document.getElementById('f-fecNac').value = a.fecNacimiento;
+      } catch(e) { toast('Error al cargar alumno', 'error'); }
+    }
+
+    async function guardar() {
+  const alerta = document.getElementById('modal-alert');
+
+  const apPaterno    = document.getElementById('f-apPaterno').value.trim();
+  const apMaterno    = document.getElementById('f-apMaterno').value.trim();
+  const nombre       = document.getElementById('f-nombre').value.trim();
+  const nroDocumento = document.getElementById('f-nroDoc').value.trim();
+  const idTipoDoc    = parseInt(document.getElementById('f-tipoDoc').value);
+
+  if (!apPaterno || !apMaterno || !nombre || !nroDocumento || !idTipoDoc) {
+    alerta.innerHTML = '<div class="alert alert-error">⚠ Complete los campos obligatorios</div>';
+    return;
+  }
+
+  const errorDoc = validarDocumento();
+  if (errorDoc) {
+    alerta.innerHTML = `<div class="alert alert-error">⚠ ${errorDoc}</div>`;
+    return;
+  }
+
+  const body = {
+    apPaterno,
+    apMaterno,
+    nombre,
+    nroDocumento,
+    idTipoDoc,
+    sexo:         document.getElementById('f-sexo').value || null,
+    fecNacimiento:document.getElementById('f-fecNac').value || null,
+  };
+
+  try {
+    if (editandoId) {
+      await api.put(`/alumnos/${editandoId}`, body);
+      toast('Alumno actualizado correctamente');
+    } else {
+      await api.post('/alumnos', body);
+      toast('Alumno registrado correctamente');
+    }
+    cerrarModal();
+    cargarAlumnos();
+  } catch(e) {
+    alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al guardar'}</div>`;
+  }
+}
+
+    async function eliminar(id) {
+      if (!confirm('¿Está seguro de eliminar este alumno?')) return;
+      try {
+        await api.delete(`/alumnos/${id}`);
+        toast('Alumno eliminado');
+        cargarAlumnos();
+      } catch(e) { toast('Error al eliminar', 'error'); }
+    }
+
+    cargarTiposDocs();
+    cargarAlumnos();
+</script>
+</body>
+</html>
