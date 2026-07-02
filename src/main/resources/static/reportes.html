@@ -165,127 +165,141 @@
 <div id="toast"></div>
 <script src="js/api.js"></script>
 <script>
-    session.check();
-    loadSidebarUser();
-    setActiveNav();
-    function logout() { session.clear(); location.href = 'login.html'; }
+    (async () => {
+  session.check();
+  await protegerPagina();
+  loadSidebarUser();
+  await init();
+})();
+        function logout() { session.clear(); location.href = 'login.html'; }
 
-    let tabActual = 'matriculados';
+        let tabActual = 'matriculados';
 
-    const config = {
-      matriculados: {
-        titulo:    'Alumnos Matriculados',
-        endpoint:  (id) => `/reportes/matriculados/${id}`,
-        columnas:  ['Alumno', 'Documento', 'Nivel', 'Grado', 'Sección', 'Fecha Matrícula'],
-        campos:    ['alumno', 'documento', 'nivel', 'grado', 'seccion', 'fecha'],
-        total:     false
-      },
-      pagos: {
-        titulo:    'Pagos Realizados',
-        endpoint:  (id) => `/reportes/pagos/${id}`,
-        columnas:  ['N° Boleta', 'Alumno', 'Documento', 'Concepto', 'Monto', 'Fecha Pago'],
-        campos:    ['boleta', 'alumno', 'documento', 'concepto', 'monto', 'fecha'],
-        total:     true,
-        campoTotal:'monto'
-      },
-      deudas: {
-        titulo:    'Deudas Pendientes',
-        endpoint:  (id) => `/reportes/deudas/${id}`,
-        columnas:  ['Alumno', 'Documento', 'Concepto', 'Monto Pendiente', 'Orden'],
-        campos:    ['alumno', 'documento', 'concepto', 'monto', 'orden'],
-        total:     true,
-        campoTotal:'monto'
-      }
-    };
+        const config = {
+          matriculados: {
+            titulo:    'Alumnos Matriculados',
+            endpoint:  (id) => `/reportes/matriculados/${id}`,
+            columnas:  ['Alumno', 'Documento', 'Nivel', 'Grado', 'Sección', 'Fecha Matrícula'],
+            campos:    ['alumno', 'documento', 'nivel', 'grado', 'seccion', 'fecha'],
+            total:     false
+          },
+          pagos: {
+            titulo:    'Pagos Realizados',
+            endpoint:  (id) => `/reportes/pagos/${id}`,
+            columnas:  ['N° Boleta', 'Alumno', 'Documento', 'Concepto', 'Monto', 'Fecha Pago'],
+            campos:    ['boleta', 'alumno', 'documento', 'concepto', 'monto', 'fecha'],
+            total:     true,
+            campoTotal:'monto'
+          },
+          deudas: {
+            titulo:    'Deudas Pendientes',
+            endpoint:  (id) => `/reportes/deudas/${id}`,
+            columnas:  ['Alumno', 'Documento', 'Concepto', 'Monto Pendiente', 'Orden'],
+            campos:    ['alumno', 'documento', 'concepto', 'monto', 'orden'],
+            total:     true,
+            campoTotal:'monto'
+          }
+        };
 
-    async function init() {
-      const anios = await api.get('/anios').catch(() => []);
-      const sel   = document.getElementById('filtro-anio');
-      anios.forEach(a => {
-        sel.innerHTML += `<option value="${a.idAnio}">${a.anio}</option>`;
-      });
-      if (anios.length > 0)
-        sel.value = anios[anios.length - 1].idAnio;
-    }
+        async function init() {
+          const anios = await api.get('/anios').catch(() => []);
+          const sel   = document.getElementById('filtro-anio');
+          anios.forEach(a => {
+            sel.innerHTML += `<option value="${a.idAnio}">${a.anio}</option>`;
+          });
+          if (anios.length > 0)
+            sel.value = anios[anios.length - 1].idAnio;
+        }
 
-    function cambiarTab(tab, btn) {
-      tabActual = tab;
-      document.querySelectorAll('.tab-btn')
-        .forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      limpiarTabla();
-    }
+        function cambiarTab(tab, btn) {
+          tabActual = tab;
+          document.querySelectorAll('.tab-btn')
+            .forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          limpiarTabla();
+        }
 
-    function limpiarTabla() {
-      document.getElementById('thead-reporte').innerHTML = '';
-      document.getElementById('tbody-reporte').innerHTML = `
-        <tr><td colspan="10"
-          style="text-align:center;padding:40px;color:var(--text-muted)">
-          Haga clic en "Generar reporte"
-        </td></tr>`;
-      document.getElementById('contador-reporte').textContent = '';
-      document.getElementById('card-totales').style.display = 'none';
-      document.getElementById('subtitulo-reporte').textContent = '';
-    }
+        function aplicarPermisosUI() {
+  const page = location.pathname.split('/').pop();
+  const btnNuevo   = document.getElementById('btn-nuevo');
+  const btnClonar  = document.getElementById('btn-clonar');
 
-    async function generarReporte() {
-      const idAnio = document.getElementById('filtro-anio').value;
-      if (!idAnio) { toast('Seleccione un año académico', 'error'); return; }
+  if (btnNuevo)  btnNuevo.style.display  =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+  if (btnClonar) btnClonar.style.display =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+}
 
-      const anioTexto = document.getElementById('filtro-anio')
-        .options[document.getElementById('filtro-anio').selectedIndex].text;
-
-      const cfg = config[tabActual];
-
-      try {
-        const data = await api.get(cfg.endpoint(idAnio));
-
-        // Título y subtítulo
-        document.getElementById('titulo-reporte').textContent = cfg.titulo;
-        document.getElementById('subtitulo-reporte').textContent =
-          `Año académico ${anioTexto} — Generado: ${new Date().toLocaleString('es-PE')}`;
-        document.getElementById('contador-reporte').textContent =
-          `${data.length} registro${data.length !== 1 ? 's' : ''}`;
-
-        // Encabezado
-        document.getElementById('thead-reporte').innerHTML = `
-          <tr>${cfg.columnas.map(c => `<th>${c}</th>`).join('')}</tr>`;
-
-        // Cuerpo
-        if (!data.length) {
+        function limpiarTabla() {
+          document.getElementById('thead-reporte').innerHTML = '';
           document.getElementById('tbody-reporte').innerHTML = `
-            <tr><td colspan="${cfg.columnas.length}"
-              style="text-align:center;padding:30px;color:var(--text-muted)">
-              No hay registros para mostrar
+            <tr><td colspan="10"
+              style="text-align:center;padding:40px;color:var(--text-muted)">
+              Haga clic en "Generar reporte"
             </td></tr>`;
-          return;
-        }
-
-        document.getElementById('tbody-reporte').innerHTML = data.map(row => `
-          <tr>${cfg.campos.map(campo => {
-            let val = row[campo] ?? '—';
-            if (campo === 'monto') val = `S/ ${parseFloat(val).toFixed(2)}`;
-            return `<td>${val}</td>`;
-          }).join('')}</tr>
-        `).join('');
-
-        // Total si aplica
-        if (cfg.total) {
-          const total = data.reduce((s, r) =>
-            s + parseFloat(r[cfg.campoTotal] || 0), 0);
-          document.getElementById('total-reporte').textContent =
-            `S/ ${total.toFixed(2)}`;
-          document.getElementById('card-totales').style.display = 'flex';
-        } else {
+          document.getElementById('contador-reporte').textContent = '';
           document.getElementById('card-totales').style.display = 'none';
+          document.getElementById('subtitulo-reporte').textContent = '';
         }
 
-      } catch(e) {
-        toast('Error al generar el reporte', 'error');
-      }
-    }
+        async function generarReporte() {
+          const idAnio = document.getElementById('filtro-anio').value;
+          if (!idAnio) { toast('Seleccione un año académico', 'error'); return; }
 
-    init();
+          const anioTexto = document.getElementById('filtro-anio')
+            .options[document.getElementById('filtro-anio').selectedIndex].text;
+
+          const cfg = config[tabActual];
+
+          try {
+            const data = await api.get(cfg.endpoint(idAnio));
+
+            // Título y subtítulo
+            document.getElementById('titulo-reporte').textContent = cfg.titulo;
+            document.getElementById('subtitulo-reporte').textContent =
+              `Año académico ${anioTexto} — Generado: ${new Date().toLocaleString('es-PE')}`;
+            document.getElementById('contador-reporte').textContent =
+              `${data.length} registro${data.length !== 1 ? 's' : ''}`;
+
+            // Encabezado
+            document.getElementById('thead-reporte').innerHTML = `
+              <tr>${cfg.columnas.map(c => `<th>${c}</th>`).join('')}</tr>`;
+
+            // Cuerpo
+            if (!data.length) {
+              document.getElementById('tbody-reporte').innerHTML = `
+                <tr><td colspan="${cfg.columnas.length}"
+                  style="text-align:center;padding:30px;color:var(--text-muted)">
+                  No hay registros para mostrar
+                </td></tr>`;
+              return;
+            }
+
+            document.getElementById('tbody-reporte').innerHTML = data.map(row => `
+              <tr>${cfg.campos.map(campo => {
+                let val = row[campo] ?? '—';
+                if (campo === 'monto') val = `S/ ${parseFloat(val).toFixed(2)}`;
+                return `<td>${val}</td>`;
+              }).join('')}</tr>
+            `).join('');
+
+            // Total si aplica
+            if (cfg.total) {
+              const total = data.reduce((s, r) =>
+                s + parseFloat(r[cfg.campoTotal] || 0), 0);
+              document.getElementById('total-reporte').textContent =
+                `S/ ${total.toFixed(2)}`;
+              document.getElementById('card-totales').style.display = 'flex';
+            } else {
+              document.getElementById('card-totales').style.display = 'none';
+            }
+
+          } catch(e) {
+            toast('Error al generar el reporte', 'error');
+          }
+        }
+
+        init();
 </script>
 </body>
 </html>

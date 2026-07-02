@@ -37,7 +37,8 @@
     <div class="main-content">
         <div class="topbar">
             <div><h1>Usuarios</h1><div class="breadcrumb">Seguridad / Usuarios</div></div>
-            <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo usuario</button>
+            <button class="btn btn-primary" id="btn-nuevo"
+                    onclick="abrirModal()">+ Nuevo usuario</button>
         </div>
 
         <div class="page-body">
@@ -137,184 +138,196 @@
 <div id="toast"></div>
 <script src="js/api.js"></script>
 <script>
-    session.check();
-    loadSidebarUser();
-    setActiveNav();
-    function logout() { session.clear(); location.href = 'login.html'; }
+    (async () => {
+  session.check();
+  await protegerPagina();
+  loadSidebarUser();
+  aplicarPermisosUI();
+  await init();
+    })();
 
-    let roles        = [];
-    let idCambiandoPwd = null;
+        function logout() { session.clear(); location.href = 'login.html'; }
 
-    async function init() {
-      roles = await api.get('/roles').catch(() => []);
-      const sel = document.getElementById('f-rol');
-      roles.forEach(r => {
-        sel.innerHTML += `<option value="${r.idRol}">${r.nombre}</option>`;
-      });
-      cargarUsuarios();
-    }
+        let roles        = [];
+        let idCambiandoPwd = null;
 
-    async function cargarUsuarios() {
-      try {
-        const data = await api.get('/usuarios');
-        renderTabla(data);
-      } catch(e) {
-        toast('Error al cargar usuarios', 'error');
-      }
-    }
+        async function init() {
+          roles = await api.get('/roles').catch(() => []);
+          const sel = document.getElementById('f-rol');
+          roles.forEach(r => {
+            sel.innerHTML += `<option value="${r.idRol}">${r.nombre}</option>`;
+          });
+          cargarUsuarios();
+        }
 
-    function renderTabla(data) {
-      const tbody = document.getElementById('tabla-usuarios');
-      if (!data.length) {
-        tbody.innerHTML = `<tr><td colspan="6"
-          style="text-align:center;padding:30px;color:var(--text-muted)">
-          Sin usuarios registrados</td></tr>`;
-        return;
-      }
+        async function cargarUsuarios() {
+          try {
+            const data = await api.get('/usuarios');
+            renderTabla(data);
+          } catch(e) {
+            toast('Error al cargar usuarios', 'error');
+          }
+        }
 
-      const usuLogin = session.get()?.username;
+        function aplicarPermisosUI() {
+  const page = location.pathname.split('/').pop();
+  const btnNuevo   = document.getElementById('btn-nuevo');
+  const btnClonar  = document.getElementById('btn-clonar');
 
-      tbody.innerHTML = data.map((u, i) => {
-        const esSU      = u.rol?.nombre === 'SUPERUSUARIO';
-        const esMismo   = u.username === usuLogin;
-        const puedeBorrar = !esSU && !esMismo;
+  if (btnNuevo)  btnNuevo.style.display  =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+  if (btnClonar) btnClonar.style.display =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+}
 
-        return `
-          <tr>
-            <td>${i + 1}</td>
-            <td><strong>${u.nombreCompleto}</strong></td>
-            <td>${u.username}</td>
-            <td>
-              <span class="badge ${rolBadge(u.rol?.nombre)}">
-                ${u.rol?.nombre || '—'}
-              </span>
-            </td>
-            <td>
-              <span class="badge ${u.estado === 'A' ? 'badge-success' : 'badge-danger'}">
-                ${u.estado === 'A' ? 'Activo' : 'Inactivo'}
-              </span>
-            </td>
-            <td style="display:flex;gap:6px">
-              <button class="btn btn-outline btn-sm"
-                      onclick="abrirModalPassword(${u.idUsuario})">
-                🔑 Contraseña
-              </button>
-              ${puedeBorrar
-                ? `<button class="btn btn-danger btn-sm"
-                           onclick="eliminar(${u.idUsuario})">🗑</button>`
-                : `<span style="font-size:11px;color:var(--text-muted);
-                                padding:5px 8px">🔒 Protegido</span>`
-              }
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
+        function renderTabla(data) {
+  const tbody     = document.getElementById('tabla-usuarios');
+  const page      = location.pathname.split('/').pop();
+  const puedeEliminar = session.puedeEliminar(page);
+  const usuLogin  = session.get()?.username;
 
-    function rolBadge(nombre) {
-      if (nombre === 'SUPERUSUARIO') return 'badge-warning';
-      if (nombre === 'SECRETARIA')   return 'badge-info';
-      return 'badge-success';
-    }
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="6"
+      style="text-align:center;padding:30px;color:var(--text-muted)">
+      Sin usuarios registrados</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map((u, i) => {
+    const esSU      = u.rol?.nombre === 'SUPERUSUARIO';
+    const esMismo   = u.username === usuLogin;
+    const puedeBorrar = puedeEliminar && !esSU && !esMismo;
 
-    function abrirModal() {
-      document.getElementById('modal-alert').innerHTML = '';
-      document.getElementById('f-nombre').value   = '';
-      document.getElementById('f-username').value = '';
-      document.getElementById('f-password').value = '';
-      document.getElementById('f-rol').value      = '';
-      document.getElementById('modal-overlay').classList.add('open');
-    }
+    return `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${u.nombreCompleto}</strong></td>
+        <td>${u.username}</td>
+        <td><span class="badge ${rolBadge(u.rol?.nombre)}">
+          ${u.rol?.nombre || '—'}
+        </span></td>
+        <td><span class="badge ${u.estado === 'A' ? 'badge-success' : 'badge-danger'}">
+          ${u.estado === 'A' ? 'Activo' : 'Inactivo'}
+        </span></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm"
+                  onclick="abrirModalPassword(${u.idUsuario})">
+            🔑 Contraseña
+          </button>
+          ${puedeBorrar
+            ? `<button class="btn btn-danger btn-sm"
+                       onclick="eliminar(${u.idUsuario})">🗑</button>`
+            : `<span style="font-size:11px;color:var(--text-muted);
+                            padding:5px 8px">🔒 Protegido</span>`}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
 
-    function cerrarModal() {
-      document.getElementById('modal-overlay').classList.remove('open');
-    }
+        function rolBadge(nombre) {
+          if (nombre === 'SUPERUSUARIO') return 'badge-warning';
+          if (nombre === 'SECRETARIA')   return 'badge-info';
+          return 'badge-success';
+        }
 
-    async function guardar() {
-      const body = {
-        nombreCompleto: document.getElementById('f-nombre').value.trim(),
-        username:       document.getElementById('f-username').value.trim(),
-        password:       document.getElementById('f-password').value,
-        idRol:          parseInt(document.getElementById('f-rol').value)
-      };
-      const alerta = document.getElementById('modal-alert');
+        function abrirModal() {
+          document.getElementById('modal-alert').innerHTML = '';
+          document.getElementById('f-nombre').value   = '';
+          document.getElementById('f-username').value = '';
+          document.getElementById('f-password').value = '';
+          document.getElementById('f-rol').value      = '';
+          document.getElementById('modal-overlay').classList.add('open');
+        }
 
-      if (!body.nombreCompleto || !body.username || !body.password || !body.idRol) {
-        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
-        return;
-      }
+        function cerrarModal() {
+          document.getElementById('modal-overlay').classList.remove('open');
+        }
 
-      try {
-        await api.post('/usuarios', body);
-        toast('Usuario creado correctamente');
-        cerrarModal();
-        cargarUsuarios();
-      } catch(e) {
-        alerta.innerHTML = `<div class="alert alert-error">
-          ✕ ${e.message || 'Error al guardar'}</div>`;
-      }
-    }
+        async function guardar() {
+          const body = {
+            nombreCompleto: document.getElementById('f-nombre').value.trim(),
+            username:       document.getElementById('f-username').value.trim(),
+            password:       document.getElementById('f-password').value,
+            idRol:          parseInt(document.getElementById('f-rol').value)
+          };
+          const alerta = document.getElementById('modal-alert');
 
-    function abrirModalPassword(id) {
-      idCambiandoPwd = id;
-      document.getElementById('pwd-alert').innerHTML = '';
-      document.getElementById('pwd-actual').value    = '';
-      document.getElementById('pwd-nueva').value     = '';
-      document.getElementById('pwd-confirmar').value = '';
-      document.getElementById('modal-password').classList.add('open');
-    }
+          if (!body.nombreCompleto || !body.username || !body.password || !body.idRol) {
+            alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+            return;
+          }
 
-    function cerrarModalPassword() {
-      document.getElementById('modal-password').classList.remove('open');
-      idCambiandoPwd = null;
-    }
+          try {
+            await api.post('/usuarios', body);
+            toast('Usuario creado correctamente');
+            cerrarModal();
+            cargarUsuarios();
+          } catch(e) {
+            alerta.innerHTML = `<div class="alert alert-error">
+              ✕ ${e.message || 'Error al guardar'}</div>`;
+          }
+        }
 
-    async function cambiarPassword() {
-      const actual    = document.getElementById('pwd-actual').value;
-      const nueva     = document.getElementById('pwd-nueva').value;
-      const confirmar = document.getElementById('pwd-confirmar').value;
-      const alerta    = document.getElementById('pwd-alert');
+        function abrirModalPassword(id) {
+          idCambiandoPwd = id;
+          document.getElementById('pwd-alert').innerHTML = '';
+          document.getElementById('pwd-actual').value    = '';
+          document.getElementById('pwd-nueva').value     = '';
+          document.getElementById('pwd-confirmar').value = '';
+          document.getElementById('modal-password').classList.add('open');
+        }
 
-      if (!actual || !nueva || !confirmar) {
-        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
-        return;
-      }
+        function cerrarModalPassword() {
+          document.getElementById('modal-password').classList.remove('open');
+          idCambiandoPwd = null;
+        }
 
-      if (nueva !== confirmar) {
-        alerta.innerHTML = '<div class="alert alert-error">⚠ Las contraseñas no coinciden</div>';
-        return;
-      }
+        async function cambiarPassword() {
+          const actual    = document.getElementById('pwd-actual').value;
+          const nueva     = document.getElementById('pwd-nueva').value;
+          const confirmar = document.getElementById('pwd-confirmar').value;
+          const alerta    = document.getElementById('pwd-alert');
 
-      if (nueva.length < 4) {
-        alerta.innerHTML = '<div class="alert alert-error">⚠ La contraseña debe tener al menos 4 caracteres</div>';
-        return;
-      }
+          if (!actual || !nueva || !confirmar) {
+            alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+            return;
+          }
 
-      try {
-        await api.put(`/usuarios/${idCambiandoPwd}/cambiar-password`, {
-          passwordActual: actual,
-          passwordNueva:  nueva
-        });
-        toast('Contraseña actualizada correctamente');
-        cerrarModalPassword();
-      } catch(e) {
-        alerta.innerHTML = `<div class="alert alert-error">
-          ✕ ${e.message || 'Contraseña actual incorrecta'}</div>`;
-      }
-    }
+          if (nueva !== confirmar) {
+            alerta.innerHTML = '<div class="alert alert-error">⚠ Las contraseñas no coinciden</div>';
+            return;
+          }
 
-    async function eliminar(id) {
-      if (!confirm('¿Está seguro de eliminar este usuario?')) return;
-      try {
-        await api.delete(`/usuarios/${id}`);
-        toast('Usuario eliminado');
-        cargarUsuarios();
-      } catch(e) {
-        toast(e.message || 'Error al eliminar', 'error');
-      }
-    }
+          if (nueva.length < 4) {
+            alerta.innerHTML = '<div class="alert alert-error">⚠ La contraseña debe tener al menos 4 caracteres</div>';
+            return;
+          }
 
-    init();
+          try {
+            await api.put(`/usuarios/${idCambiandoPwd}/cambiar-password`, {
+              passwordActual: actual,
+              passwordNueva:  nueva
+            });
+            toast('Contraseña actualizada correctamente');
+            cerrarModalPassword();
+          } catch(e) {
+            alerta.innerHTML = `<div class="alert alert-error">
+              ✕ ${e.message || 'Contraseña actual incorrecta'}</div>`;
+          }
+        }
+
+        async function eliminar(id) {
+          if (!confirm('¿Está seguro de eliminar este usuario?')) return;
+          try {
+            await api.delete(`/usuarios/${id}`);
+            toast('Usuario eliminado');
+            cargarUsuarios();
+          } catch(e) {
+            toast(e.message || 'Error al eliminar', 'error');
+          }
+        }
+
+        init();
 </script>
 </body>
 </html>

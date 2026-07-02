@@ -151,155 +151,170 @@
 <div id="toast"></div>
 <script src="js/api.js"></script>
 <script>
-    session.check();
-    loadSidebarUser();
-    setActiveNav();
-    function logout() { session.clear(); location.href = 'login.html'; }
+    (async () => {
+  session.check();
+  await protegerPagina();
+  loadSidebarUser();
+  await init();
+})();
 
-    let todosAlumnos = [];
-    let todasAulas   = [];
+        function logout() { session.clear(); location.href = 'login.html'; }
 
-    async function init() {
-      const anios = await api.get('/anios').catch(() => []);
-      const sel   = document.getElementById('f-anio');
-      anios.forEach(a => sel.innerHTML += `<option value="${a.idAnio}">${a.anio}</option>`);
-    }
+        let todosAlumnos = [];
+        let todasAulas   = [];
 
-    async function cargarAulas() {
-      const idAnio = document.getElementById('f-anio').value;
-      if (!idAnio) return;
-      todasAulas = await api.get(`/aulas?idAnio=${idAnio}`).catch(() => []);
-    }
+        async function init() {
+          const anios = await api.get('/anios').catch(() => []);
+          const sel   = document.getElementById('f-anio');
+          anios.forEach(a => sel.innerHTML += `<option value="${a.idAnio}">${a.anio}</option>`);
+        }
 
-    async function abrirModalAlumno() {
-      todosAlumnos = await api.get('/alumnos/buscar/nombre?texto=').catch(() => []);
-      filtrarAlumnos('');
-      document.getElementById('modal-alumno').classList.add('open');
-    }
+        async function cargarAulas() {
+          const idAnio = document.getElementById('f-anio').value;
+          if (!idAnio) return;
+          todasAulas = await api.get(`/aulas?idAnio=${idAnio}`).catch(() => []);
+        }
 
-    function cerrarModalAlumno() {
-      document.getElementById('modal-alumno').classList.remove('open');
-    }
+        async function abrirModalAlumno() {
+          todosAlumnos = await api.get('/alumnos/buscar/nombre?texto=').catch(() => []);
+          filtrarAlumnos('');
+          document.getElementById('modal-alumno').classList.add('open');
+        }
 
-    function filtrarAlumnos(texto) {
-      const filtrados = todosAlumnos.filter(a =>
-        `${a.apPaterno} ${a.apMaterno} ${a.nombre} ${a.nroDocumento}`
-          .toLowerCase().includes(texto.toLowerCase())
-      );
-      const tbody = document.getElementById('lista-alumnos-modal');
-      tbody.innerHTML = filtrados.map(a => `
-        <tr>
-          <td>${a.apPaterno} ${a.apMaterno}, ${a.nombre}</td>
-          <td>${a.nroDocumento}</td>
-          <td>
-            <button class="btn btn-accent btn-sm"
-              onclick="seleccionarAlumno(${a.idAlumno}, '${a.apPaterno} ${a.apMaterno} ${a.nombre}')">
-              Seleccionar
-            </button>
-          </td>
-        </tr>
-      `).join('');
-    }
+        function cerrarModalAlumno() {
+          document.getElementById('modal-alumno').classList.remove('open');
+        }
 
-    function seleccionarAlumno(id, nombre) {
-      document.getElementById('f-alumno-id').value      = id;
-      document.getElementById('f-alumno-nombre').value  = nombre;
-      cerrarModalAlumno();
-    }
+        function aplicarPermisosUI() {
+  const page = location.pathname.split('/').pop();
+  const btnNuevo   = document.getElementById('btn-nuevo');
+  const btnClonar  = document.getElementById('btn-clonar');
 
-    function abrirModalAula() {
-      if (!todasAulas.length) { toast('Primero seleccione el año académico', 'error'); return; }
-      const tbody = document.getElementById('lista-aulas-modal');
-      tbody.innerHTML = todasAulas.map(a => `
-        <tr>
-          <td>${a.nivel?.nombre || '—'}</td>
-          <td>${a.grado}°</td>
-          <td>${a.seccion}</td>
-          <td><span class="badge badge-info">Ver cupos</span></td>
-          <td>
-            <button class="btn btn-accent btn-sm"
-              onclick="seleccionarAula(${a.idAula}, '${a.nivel?.nombre || ''} ${a.grado}° ${a.seccion}')">
-              Seleccionar
-            </button>
-          </td>
-        </tr>
-      `).join('');
-      document.getElementById('modal-aula').classList.add('open');
-    }
+  if (btnNuevo)  btnNuevo.style.display  =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+  if (btnClonar) btnClonar.style.display =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+}
 
-    function cerrarModalAula() {
-      document.getElementById('modal-aula').classList.remove('open');
-    }
+        function filtrarAlumnos(texto) {
+          const filtrados = todosAlumnos.filter(a =>
+            `${a.apPaterno} ${a.apMaterno} ${a.nombre} ${a.nroDocumento}`
+              .toLowerCase().includes(texto.toLowerCase())
+          );
+          const tbody = document.getElementById('lista-alumnos-modal');
+          tbody.innerHTML = filtrados.map(a => `
+            <tr>
+              <td>${a.apPaterno} ${a.apMaterno}, ${a.nombre}</td>
+              <td>${a.nroDocumento}</td>
+              <td>
+                <button class="btn btn-accent btn-sm"
+                  onclick="seleccionarAlumno(${a.idAlumno}, '${a.apPaterno} ${a.apMaterno} ${a.nombre}')">
+                  Seleccionar
+                </button>
+              </td>
+            </tr>
+          `).join('');
+        }
 
-    function seleccionarAula(id, nombre) {
-      document.getElementById('f-aula-id').value    = id;
-      document.getElementById('f-aula-nombre').value = nombre;
-      cerrarModalAula();
-    }
+        function seleccionarAlumno(id, nombre) {
+          document.getElementById('f-alumno-id').value      = id;
+          document.getElementById('f-alumno-nombre').value  = nombre;
+          cerrarModalAlumno();
+        }
 
-    async function matricular() {
-      const idAnio   = parseInt(document.getElementById('f-anio').value);
-      const idAlumno = parseInt(document.getElementById('f-alumno-id').value);
-      const idAula   = parseInt(document.getElementById('f-aula-id').value);
-      const alerta   = document.getElementById('form-alert');
+        function abrirModalAula() {
+          if (!todasAulas.length) { toast('Primero seleccione el año académico', 'error'); return; }
+          const tbody = document.getElementById('lista-aulas-modal');
+          tbody.innerHTML = todasAulas.map(a => `
+            <tr>
+              <td>${a.nivel?.nombre || '—'}</td>
+              <td>${a.grado}°</td>
+              <td>${a.seccion}</td>
+              <td><span class="badge badge-info">Ver cupos</span></td>
+              <td>
+                <button class="btn btn-accent btn-sm"
+                  onclick="seleccionarAula(${a.idAula}, '${a.nivel?.nombre || ''} ${a.grado}° ${a.seccion}')">
+                  Seleccionar
+                </button>
+              </td>
+            </tr>
+          `).join('');
+          document.getElementById('modal-aula').classList.add('open');
+        }
 
-      if (!idAnio || !idAlumno || !idAula) {
-        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
-        return;
-      }
+        function cerrarModalAula() {
+          document.getElementById('modal-aula').classList.remove('open');
+        }
 
-      try {
-        // 1. Guardar la matrícula en el backend
-        await api.post('/matriculas', { idAnio, idAlumno, idAula });
+        function seleccionarAula(id, nombre) {
+          document.getElementById('f-aula-id').value    = id;
+          document.getElementById('f-aula-nombre').value = nombre;
+          cerrarModalAula();
+        }
 
-        // 2. Extraer datos directamente de la vista para la ventana flotante
-        const alumnoNombre = document.getElementById('f-alumno-nombre').value;
-        const aulaNombre   = document.getElementById('f-aula-nombre').value;
-        const anioSel      = document.getElementById('f-anio');
-        const anioTexto    = anioSel.options[anioSel.selectedIndex]?.text || '';
+        async function matricular() {
+          const idAnio   = parseInt(document.getElementById('f-anio').value);
+          const idAlumno = parseInt(document.getElementById('f-alumno-id').value);
+          const idAula   = parseInt(document.getElementById('f-aula-id').value);
+          const alerta   = document.getElementById('form-alert');
 
-        // 3. Dibujar el interior del modal de éxito
-        document.getElementById('detalle-matricula').innerHTML = `
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;
-                      color:var(--text-muted);margin-bottom:12px;font-weight:700">
-            Resumen de Matrícula
-          </div>
-          <div style="display:flex;justify-content:space-between;
-                      padding:8px 0;border-bottom:1px solid var(--border)">
-            <span style="color:var(--text-muted)">Alumno</span>
-            <strong style="text-align:right;max-width:65%">${alumnoNombre}</strong>
-          </div>
-          <div style="display:flex;justify-content:space-between;
-                      padding:8px 0;border-bottom:1px solid var(--border)">
-            <span style="color:var(--text-muted)">Aula asignada</span>
-            <strong style="text-align:right">${aulaNombre}</strong>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0">
-            <span style="color:var(--text-muted)">Año académico</span>
-            <strong>${anioTexto}</strong>
-          </div>
-        `;
+          if (!idAnio || !idAlumno || !idAula) {
+            alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+            return;
+          }
 
-        // 4. Abrir la ventana flotante y limpiar alertas
-        document.getElementById('modal-confirmacion').classList.add('open');
-        alerta.innerHTML = '';
+          try {
+            // 1. Guardar la matrícula en el backend
+            await api.post('/matriculas', { idAnio, idAlumno, idAula });
 
-        // 5. Limpiar los campos para una nueva matrícula
-        document.getElementById('f-alumno-id').value     = '';
-        document.getElementById('f-alumno-nombre').value = '';
-        document.getElementById('f-aula-id').value       = '';
-        document.getElementById('f-aula-nombre').value   = '';
+            // 2. Extraer datos directamente de la vista para la ventana flotante
+            const alumnoNombre = document.getElementById('f-alumno-nombre').value;
+            const aulaNombre   = document.getElementById('f-aula-nombre').value;
+            const anioSel      = document.getElementById('f-anio');
+            const anioTexto    = anioSel.options[anioSel.selectedIndex]?.text || '';
 
-      } catch(e) {
-        alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al procesar la matrícula'}</div>`;
-      }
-    }
+            // 3. Dibujar el interior del modal de éxito
+            document.getElementById('detalle-matricula').innerHTML = `
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;
+                          color:var(--text-muted);margin-bottom:12px;font-weight:700">
+                Resumen de Matrícula
+              </div>
+              <div style="display:flex;justify-content:space-between;
+                          padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="color:var(--text-muted)">Alumno</span>
+                <strong style="text-align:right;max-width:65%">${alumnoNombre}</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;
+                          padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="color:var(--text-muted)">Aula asignada</span>
+                <strong style="text-align:right">${aulaNombre}</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0">
+                <span style="color:var(--text-muted)">Año académico</span>
+                <strong>${anioTexto}</strong>
+              </div>
+            `;
 
-    function cerrarConfirmacion() {
-      document.getElementById('modal-confirmacion').classList.remove('open');
-    }
+            // 4. Abrir la ventana flotante y limpiar alertas
+            document.getElementById('modal-confirmacion').classList.add('open');
+            alerta.innerHTML = '';
 
-    init();
+            // 5. Limpiar los campos para una nueva matrícula
+            document.getElementById('f-alumno-id').value     = '';
+            document.getElementById('f-alumno-nombre').value = '';
+            document.getElementById('f-aula-id').value       = '';
+            document.getElementById('f-aula-nombre').value   = '';
+
+          } catch(e) {
+            alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al procesar la matrícula'}</div>`;
+          }
+        }
+
+        function cerrarConfirmacion() {
+          document.getElementById('modal-confirmacion').classList.remove('open');
+        }
+
+        init();
 </script>
 </body>
 </html>

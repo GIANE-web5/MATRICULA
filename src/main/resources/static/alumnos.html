@@ -36,7 +36,9 @@
     <div class="main-content">
         <div class="topbar">
             <div><h1>Alumnos</h1><div class="breadcrumb">Mantenimiento / Alumnos</div></div>
-            <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo alumno</button>
+            <button id="btn-nuevo" class="btn btn-primary" onclick="abrirModal()">
+                + Nuevo alumno
+            </button>
         </div>
 
         <div class="page-body">
@@ -132,9 +134,14 @@
 <div id="toast"></div>
 <script src="js/api.js"></script>
 <script>
-    session.check();
-    loadSidebarUser();
-    setActiveNav();
+    (async () => {
+  session.check();
+  await protegerPagina();
+  loadSidebarUser();
+  aplicarPermisosUI();
+  await cargarTiposDocs();
+  await cargarAlumnos();
+})();
 
     let editandoId = null;
     let tiposDocs  = [];
@@ -163,28 +170,63 @@
       }
     }
 
-    function renderTabla(data) {
-      const tbody = document.getElementById('tabla-alumnos');
-      if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Sin resultados</td></tr>';
-        return;
-      }
-      tbody.innerHTML = data.map((a, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td><strong>${a.apPaterno} ${a.apMaterno}</strong>, ${a.nombre}</td>
-          <td>${a.tipoDocumento?.descripcion || '—'}</td>
-          <td>${a.nroDocumento}</td>
-          <td><span class="badge ${a.estado === 'A' ? 'badge-success' : 'badge-danger'}">
-            ${a.estado === 'A' ? 'Activo' : 'Inactivo'}
-          </span></td>
-          <td>
-            <button class="btn btn-outline btn-sm" onclick="editar(${a.idAlumno})">✏ Editar</button>
-            <button class="btn btn-danger btn-sm" onclick="eliminar(${a.idAlumno})">🗑</button>
-          </td>
-        </tr>
-      `).join('');
+    function aplicarPermisosUI() {
+    const page = location.pathname.split('/').pop();
+
+    // Botón Nuevo
+    const btnNuevo = document.getElementById("btn-nuevo");
+    if (btnNuevo) {
+        btnNuevo.style.display =
+            session.puedeInsertar(page) ? "inline-flex" : "none";
     }
+}
+
+function aplicarPermisosUI() {
+  const page = location.pathname.split('/').pop();
+  const btnNuevo   = document.getElementById('btn-nuevo');
+  const btnClonar  = document.getElementById('btn-clonar');
+
+  if (btnNuevo)  btnNuevo.style.display  =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+  if (btnClonar) btnClonar.style.display =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+}
+
+function renderTabla(data) {
+  const tbody = document.getElementById('tabla-alumnos');
+  const page  = location.pathname.split('/').pop();
+  const puedeEditar   = session.puedeEditar(page);
+  const puedeEliminar = session.puedeEliminar(page);
+
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Sin resultados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map((a, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${a.apPaterno} ${a.apMaterno}</strong>, ${a.nombre}</td>
+      <td>${a.tipoDocumento?.descripcion || '—'}</td>
+      <td>${a.nroDocumento}</td>
+      <td><span class="badge ${a.estado === 'A' ? 'badge-success' : 'badge-danger'}">
+        ${a.estado === 'A' ? 'Activo' : 'Inactivo'}
+      </span></td>
+      <td>
+        ${puedeEditar
+          ? `<button class="btn btn-outline btn-sm"
+                     onclick="editar(${a.idAlumno})">✏ Editar</button>`
+          : ''}
+        ${puedeEliminar
+          ? `<button class="btn btn-danger btn-sm"
+                     onclick="eliminar(${a.idAlumno})">🗑</button>`
+          : ''}
+        ${!puedeEditar && !puedeEliminar
+          ? '<span style="color:var(--text-muted);font-size:12px">Solo lectura</span>'
+          : ''}
+      </td>
+    </tr>
+  `).join('');
+}
 
     let buscarTimer;
     function buscar() {

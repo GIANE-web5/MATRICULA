@@ -36,7 +36,8 @@
     <div class="main-content">
         <div class="topbar">
             <div><h1>Aulas</h1><div class="breadcrumb">Mantenimiento / Aulas</div></div>
-            <button class="btn btn-primary" onclick="abrirModal()">+ Nueva aula</button>
+            <button class="btn btn-primary" id="btn-nuevo"
+                    onclick="abrirModal()">+ Nueva Aula</button>
         </div>
 
         <div class="page-body">
@@ -153,8 +154,10 @@
 <script src="js/api.js"></script>
 <script>
     session.check();
+    protegerPagina();
     loadSidebarUser();
-    setActiveNav();
+    aplicarPermisosUI();
+
     function logout() { session.clear(); location.href = 'login.html'; }
 
     let todosAulas  = [];
@@ -206,6 +209,28 @@
       actualizarPreview();
     }
 
+    function aplicarPermisosUI() {
+  const page = location.pathname.split('/').pop();
+  const btnNuevo   = document.getElementById('btn-nuevo');
+  const btnClonar  = document.getElementById('btn-clonar');
+
+  if (btnNuevo)  btnNuevo.style.display  =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+  if (btnClonar) btnClonar.style.display =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+}
+
+    function aplicarPermisosUI() {
+      const page = location.pathname.split('/').pop();
+
+  // Botón nuevo
+  const btnNuevo = document.getElementById('btn-nuevo');
+  if (btnNuevo) {
+    btnNuevo.style.display =
+      session.puedeInsertar(page) ? 'inline-flex' : 'none';
+  }
+}
+
     function actualizarPreview() {
       const anioEl   = document.getElementById('f-anio');
       const nivelEl  = document.getElementById('f-nivel');
@@ -247,42 +272,40 @@
     }
 
     function renderTabla(data) {
-      const tbody = document.getElementById('tabla-aulas');
-      if (!data.length) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">
-              No hay aulas registradas para este año
-            </td>
-          </tr>`;
-        return;
-      }
+  const tbody = document.getElementById('tabla-aulas');
+  const page  = location.pathname.split('/').pop();
+  const puedeEliminar = session.puedeEliminar(page);
 
-      tbody.innerHTML = data.map((a, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>
-            <span class="badge ${nivelBadge(a.nivel?.nombre)}">
-              ${a.nivel?.nombre || '—'}
-            </span>
-          </td>
-          <td>${a.grado}°</td>
-          <td><strong>${a.seccion}</strong></td>
-          <td>${a.anioAcademico?.anio || '—'}</td>
-          <td>
-            <span style="color:var(--text-muted);font-size:12px">Ver matrículas</span>
-          </td>
-          <td>
-            <span class="badge ${a.estado === 'A' ? 'badge-success' : 'badge-danger'}">
-              ${a.estado === 'A' ? 'Activa' : 'Inactiva'}
-            </span>
-          </td>
-          <td>
-            <button class="btn btn-danger btn-sm" onclick="eliminar(${a.idAula})">🗑 Eliminar</button>
-          </td>
-        </tr>
-      `).join('');
-    }
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="8"
+      style="text-align:center;padding:40px;color:var(--text-muted)">
+      No hay aulas registradas para este año</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map((a, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><span class="badge ${nivelBadge(a.nivel?.nombre)}">
+        ${a.nivel?.nombre || '—'}
+      </span></td>
+      <td>${a.grado}°</td>
+      <td><strong>${a.seccion}</strong></td>
+      <td>${a.anioAcademico?.anio || '—'}</td>
+      <td><span style="color:var(--text-muted);font-size:12px">
+        Ver matrículas
+      </span></td>
+      <td><span class="badge ${a.estado === 'A' ? 'badge-success' : 'badge-danger'}">
+        ${a.estado === 'A' ? 'Activa' : 'Inactiva'}
+      </span></td>
+      <td>
+        ${puedeEliminar
+          ? `<button class="btn btn-danger btn-sm"
+                     onclick="eliminar(${a.idAula})">🗑 Eliminar</button>`
+          : '<span style="color:var(--text-muted);font-size:12px">Solo lectura</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
 
     function nivelBadge(nombre) {
       if (!nombre) return 'badge-info';

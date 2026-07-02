@@ -1,6 +1,8 @@
 package com.example.MATRICULA.controller;
 
+import com.example.MATRICULA.entity.RolFuncionalidad;
 import com.example.MATRICULA.entity.Usuario;
+import com.example.MATRICULA.service.RolFuncionalidadService;
 import com.example.MATRICULA.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,10 +16,16 @@ import java.util.Map;
 public class UsuarioController {
 
     private final UsuarioService service;
+    private final RolFuncionalidadService rolFuncService;
 
     @GetMapping
     public List<Usuario> listar() {
         return service.listar();
+    }
+    @GetMapping("/permisos-rol/{idRol}")
+    public ResponseEntity<?> permisosPorRol(@PathVariable Integer idRol) {
+        List<RolFuncionalidad> permisos = rolFuncService.listarPorRol(idRol);
+        return ResponseEntity.ok(permisos);
     }
 
     @PostMapping("/login")

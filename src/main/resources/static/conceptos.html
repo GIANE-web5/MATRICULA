@@ -38,7 +38,9 @@
             <div><h1>Conceptos</h1><div class="breadcrumb">Mantenimiento / Conceptos</div></div>
             <div style="display:flex;gap:10px">
                 <button class="btn btn-outline" onclick="abrirModalClonar()">📋 Clonar de otro año</button>
-                <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo concepto</button>
+                <!-- En el topbar de alumnos.html -->
+                <button class="btn btn-primary" id="btn-nuevo"
+                        onclick="abrirModal()">+ Nuevo Concepto</button>
             </div>
         </div>
 
@@ -193,268 +195,299 @@
 <div id="toast"></div>
 <script src="js/api.js"></script>
 <script>
-    session.check();
-    loadSidebarUser();
-    setActiveNav();
-    function logout() { session.clear(); location.href = 'login.html'; }
+    (async () => {
+  session.check();
+  await protegerPagina();
+  loadSidebarUser();
+  aplicarPermisosUI();
+  await init();
+})();
 
-    let editandoId = null;
-    let anios      = [];
-    let tiposConc  = [];
+        function logout() { session.clear(); location.href = 'login.html'; }
 
-    async function init() {
-      [anios, tiposConc] = await Promise.all([
-        api.get('/anios').catch(() => []),
-        api.get('/tipos-concepto').catch(() => [])
-      ]);
+        let editandoId = null;
+        let anios      = [];
+        let tiposConc  = [];
 
-      const filtro   = document.getElementById('filtro-anio');
-      const fAnio    = document.getElementById('f-anio');
-      const cOrigen  = document.getElementById('c-origen');
-      const cDestino = document.getElementById('c-destino');
+        async function init() {
+          [anios, tiposConc] = await Promise.all([
+            api.get('/anios').catch(() => []),
+            api.get('/tipos-concepto').catch(() => [])
+          ]);
 
-      anios.forEach(a => {
-        const opt = `<option value="${a.idAnio}">${a.anio}</option>`;
-        filtro.innerHTML   += opt;
-        fAnio.innerHTML    += opt;
-        cOrigen.innerHTML  += opt;
-        cDestino.innerHTML += opt;
-      });
+          const filtro   = document.getElementById('filtro-anio');
+          const fAnio    = document.getElementById('f-anio');
+          const cOrigen  = document.getElementById('c-origen');
+          const cDestino = document.getElementById('c-destino');
 
-      const fTipo = document.getElementById('f-tipo');
-      tiposConc.forEach(t => {
-        fTipo.innerHTML += `<option value="${t.idTipoConc}">${t.descripcion}</option>`;
-      });
+          anios.forEach(a => {
+            const opt = `<option value="${a.idAnio}">${a.anio}</option>`;
+            filtro.innerHTML   += opt;
+            fAnio.innerHTML    += opt;
+            cOrigen.innerHTML  += opt;
+            cDestino.innerHTML += opt;
+          });
 
-      if (anios.length > 0) {
-        filtro.value = anios[anios.length - 1].idAnio;
-        cargarConceptos();
-      }
-    }
+          const fTipo = document.getElementById('f-tipo');
+          tiposConc.forEach(t => {
+            fTipo.innerHTML += `<option value="${t.idTipoConc}">${t.descripcion}</option>`;
+          });
 
-    async function cargarConceptos() {
-      const idAnio = document.getElementById('filtro-anio').value;
-      if (!idAnio) return;
+          if (anios.length > 0) {
+            filtro.value = anios[anios.length - 1].idAnio;
+            cargarConceptos();
+          }
+        }
 
-      try {
-        const data = await api.get(`/conceptos?idAnio=${idAnio}`);
-        renderTabla(data);
+        async function cargarConceptos() {
+          const idAnio = document.getElementById('filtro-anio').value;
+          if (!idAnio) return;
 
-        const total = data.reduce((s, c) => s + parseFloat(c.monto || 0), 0);
-        document.getElementById('total-monto').textContent = `S/ ${total.toFixed(2)}`;
-        document.getElementById('card-total').style.display = 'flex';
-        document.getElementById('resumen').textContent =
-          `${data.length} concepto${data.length !== 1 ? 's' : ''}`;
-      } catch(e) {
-        toast('Error al cargar conceptos', 'error');
-      }
-    }
+          try {
+            const data = await api.get(`/conceptos?idAnio=${idAnio}`);
+            renderTabla(data);
 
-    function renderTabla(data) {
-      const tbody = document.getElementById('tabla-conceptos');
-      if (!data.length) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">
-              No hay conceptos para este año.
-              <a href="#" onclick="abrirModal()" style="color:var(--primary)">Crear uno</a>
-              o
-              <a href="#" onclick="abrirModalClonar()" style="color:var(--primary)">clonar de otro año</a>.
-            </td>
-          </tr>`;
-        document.getElementById('card-total').style.display = 'none';
-        return;
-      }
+            const total = data.reduce((s, c) => s + parseFloat(c.monto || 0), 0);
+            document.getElementById('total-monto').textContent = `S/ ${total.toFixed(2)}`;
+            document.getElementById('card-total').style.display = 'flex';
+            document.getElementById('resumen').textContent =
+              `${data.length} concepto${data.length !== 1 ? 's' : ''}`;
+          } catch(e) {
+            toast('Error al cargar conceptos', 'error');
+          }
+        }
 
-      tbody.innerHTML = data.map(c => `
-        <tr>
-          <td>
-            <span class="badge badge-info" style="font-size:13px;padding:3px 12px">
-              ${c.orden}
-            </span>
-          </td>
-          <td><strong>${c.descripcion}</strong></td>
-          <td>${c.tipoConcepto?.descripcion || '—'}</td>
-          <td><strong style="color:var(--primary)">S/ ${parseFloat(c.monto).toFixed(2)}</strong></td>
-          <td>
-            <span class="badge ${c.esObligatorio === 'S' ? 'badge-success' : 'badge-warning'}">
-              ${c.esObligatorio === 'S' ? '✔ Sí' : '— No'}
-            </span>
-          </td>
-          <td>
-            <span class="badge ${c.estado === 'A' ? 'badge-success' : 'badge-danger'}">
-              ${c.estado === 'A' ? 'Activo' : 'Inactivo'}
-            </span>
-          </td>
-          <td>
-            <button class="btn btn-outline btn-sm" onclick="editar(${c.idConcepto})">✏ Editar</button>
-            <button class="btn btn-danger btn-sm"  onclick="eliminar(${c.idConcepto})">🗑</button>
-          </td>
-        </tr>
-      `).join('');
-    }
+        function renderTabla(data) {
+  const tbody = document.getElementById('tabla-conceptos');
+  const page  = location.pathname.split('/').pop();
+  const puedeEditar   = session.puedeEditar(page);
+  const puedeEliminar = session.puedeEliminar(page);
 
-
-    function abrirModal(id = null) {
-      editandoId = id;
-      document.getElementById('modal-titulo').textContent = id ? 'Editar concepto' : 'Nuevo concepto';
-      document.getElementById('modal-alert').innerHTML = '';
-      limpiarForm();
-
-      const idAnio = document.getElementById('filtro-anio').value;
-      if (idAnio) document.getElementById('f-anio').value = idAnio;
-
-      // Sugerir siguiente orden
-      if (!id) {
-        const filas = document.querySelectorAll('#tabla-conceptos tr').length;
-        document.getElementById('f-orden').value = filas > 0 ? filas : 1;
-      }
-
-      document.getElementById('modal-overlay').classList.add('open');
-    }
-
-    function cerrarModal() {
-      document.getElementById('modal-overlay').classList.remove('open');
-      editandoId = null;
-    }
-
-    function limpiarForm() {
-      document.getElementById('f-descripcion').value = '';
-      document.getElementById('f-monto').value       = '';
-      document.getElementById('f-orden').value       = '';
-      document.getElementById('f-anio').value        = '';
-      document.getElementById('f-tipo').value        = '';
-      document.getElementById('f-obligatorio').value = 'S';
-    }
-
-    async function editar(id) {
-      try {
-        const c = await api.get(`/conceptos/${id}`);
-        abrirModal(id);
-        document.getElementById('f-anio').value        = c.anioAcademico?.idAnio || '';
-        document.getElementById('f-tipo').value        = c.tipoConcepto?.idTipoConc || '';
-        document.getElementById('f-descripcion').value = c.descripcion;
-        document.getElementById('f-monto').value       = c.monto;
-        document.getElementById('f-orden').value       = c.orden;
-        document.getElementById('f-obligatorio').value = c.esObligatorio || 'S';
-      } catch(e) {
-        toast('Error al cargar concepto', 'error');
-      }
-    }
-
-    async function guardar() {
-  const alerta = document.getElementById('modal-alert');
-
-  const idAnio      = parseInt(document.getElementById('f-anio').value);
-  const idTipoConc  = parseInt(document.getElementById('f-tipo').value);
-  const descripcion = document.getElementById('f-descripcion').value.trim();
-  const montoRaw    = document.getElementById('f-monto').value;
-  const orden       = parseInt(document.getElementById('f-orden').value);
-  const esObligatorio = document.getElementById('f-obligatorio').value;
-
-  // Validar campos vacíos
-  if (!idAnio || !idTipoConc || !descripcion || !montoRaw || !orden) {
-    alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos obligatorios</div>';
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="7"
+      style="text-align:center;padding:40px;color:var(--text-muted)">
+      No hay conceptos para este año.
+    </td></tr>`;
+    document.getElementById('card-total').style.display = 'none';
     return;
   }
+  tbody.innerHTML = data.map(c => `
+    <tr>
+      <td><span class="badge badge-info" style="font-size:13px;padding:3px 12px">
+        ${c.orden}
+      </span></td>
+      <td><strong>${c.descripcion}</strong></td>
+      <td>${c.tipoConcepto?.descripcion || '—'}</td>
+      <td><strong style="color:var(--primary)">
+        S/ ${parseFloat(c.monto).toFixed(2)}
+      </strong></td>
+      <td><span class="badge ${c.esObligatorio === 'S' ? 'badge-success' : 'badge-warning'}">
+        ${c.esObligatorio === 'S' ? '✔ Sí' : '— No'}
+      </span></td>
+      <td><span class="badge ${c.estado === 'A' ? 'badge-success' : 'badge-danger'}">
+        ${c.estado === 'A' ? 'Activo' : 'Inactivo'}
+      </span></td>
+      <td>
+        ${puedeEditar
+          ? `<button class="btn btn-outline btn-sm"
+                     onclick="editar(${c.idConcepto})">✏ Editar</button>`
+          : ''}
+        ${puedeEliminar
+          ? `<button class="btn btn-danger btn-sm"
+                     onclick="eliminar(${c.idConcepto})">🗑</button>`
+          : ''}
+        ${!puedeEditar && !puedeEliminar
+          ? '<span style="color:var(--text-muted);font-size:12px">Solo lectura</span>'
+          : ''}
+      </td>
+    </tr>
+  `).join('');
+}
 
-  // Validar monto negativo o cero
-  const monto = parseFloat(montoRaw);
-  if (isNaN(monto) || monto <= 0) {
-    alerta.innerHTML = '<div class="alert alert-error">⚠ El monto debe ser mayor a 0</div>';
-    return;
-  }
+function aplicarPermisosUI() {
+  const page = location.pathname.split('/').pop();
+  const btnNuevo   = document.getElementById('btn-nuevo');
+  const btnClonar  = document.getElementById('btn-clonar');
 
-  // Validar máximo 2 decimales
-  const partes = montoRaw.split('.');
-  if (partes[1] && partes[1].length > 2) {
-    alerta.innerHTML = '<div class="alert alert-error">⚠ El monto solo puede tener hasta 2 decimales</div>';
-    return;
-  }
+  if (btnNuevo)  btnNuevo.style.display  =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+  if (btnClonar) btnClonar.style.display =
+    session.puedeInsertar(page) ? 'inline-flex' : 'none';
+}
 
-  const body = {
-    idAnio,
-    idTipoConc,
-    descripcion,
-    monto: parseFloat(monto.toFixed(2)),
-    orden,
-    esObligatorio,
-  };
 
-  try {
-    if (editandoId) {
-      await api.put(`/conceptos/${editandoId}`, body);
-      toast('Concepto actualizado');
-    } else {
-      await api.post('/conceptos', body);
-      toast('Concepto creado correctamente');
-    }
-    cerrarModal();
-    cargarConceptos();
-  } catch(e) {
-    alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al guardar'}</div>`;
+        function abrirModal(id = null) {
+          editandoId = id;
+          document.getElementById('modal-titulo').textContent = id ? 'Editar concepto' : 'Nuevo concepto';
+          document.getElementById('modal-alert').innerHTML = '';
+          limpiarForm();
+
+          const idAnio = document.getElementById('filtro-anio').value;
+          if (idAnio) document.getElementById('f-anio').value = idAnio;
+
+          // Sugerir siguiente orden
+          if (!id) {
+            const filas = document.querySelectorAll('#tabla-conceptos tr').length;
+            document.getElementById('f-orden').value = filas > 0 ? filas : 1;
+          }
+
+          document.getElementById('modal-overlay').classList.add('open');
+        }
+
+        function cerrarModal() {
+          document.getElementById('modal-overlay').classList.remove('open');
+          editandoId = null;
+        }
+
+        function limpiarForm() {
+          document.getElementById('f-descripcion').value = '';
+          document.getElementById('f-monto').value       = '';
+          document.getElementById('f-orden').value       = '';
+          document.getElementById('f-anio').value        = '';
+          document.getElementById('f-tipo').value        = '';
+          document.getElementById('f-obligatorio').value = 'S';
+        }
+
+// Al cargar la página, verificar permisos de botones
+function aplicarPermisosUI() {
+  const page = location.pathname.split('/').pop();
+
+  // Botón nuevo
+  const btnNuevo = document.getElementById('btn-nuevo');
+  if (btnNuevo) {
+    btnNuevo.style.display =
+      session.puedeInsertar(page) ? 'inline-flex' : 'none';
   }
 }
 
-    async function eliminar(id) {
-      if (!confirm('¿Está seguro de eliminar este concepto?')) return;
-      try {
-        await api.delete(`/conceptos/${id}`);
-        toast('Concepto eliminado');
-        cargarConceptos();
-      } catch(e) {
-        toast('Error al eliminar', 'error');
-      }
-    }
+        async function editar(id) {
+          try {
+            const c = await api.get(`/conceptos/${id}`);
+            abrirModal(id);
+            document.getElementById('f-anio').value        = c.anioAcademico?.idAnio || '';
+            document.getElementById('f-tipo').value        = c.tipoConcepto?.idTipoConc || '';
+            document.getElementById('f-descripcion').value = c.descripcion;
+            document.getElementById('f-monto').value       = c.monto;
+            document.getElementById('f-orden').value       = c.orden;
+            document.getElementById('f-obligatorio').value = c.esObligatorio || 'S';
+          } catch(e) {
+            toast('Error al cargar concepto', 'error');
+          }
+        }
 
-    function abrirModalClonar() {
-      document.getElementById('clonar-alert').innerHTML = '';
-      document.getElementById('c-origen').value  = '';
-      document.getElementById('c-destino').value = '';
-      document.getElementById('modal-clonar').classList.add('open');
-    }
+        async function guardar() {
+      const alerta = document.getElementById('modal-alert');
 
-    function cerrarModalClonar() {
-      document.getElementById('modal-clonar').classList.remove('open');
-    }
+      const idAnio      = parseInt(document.getElementById('f-anio').value);
+      const idTipoConc  = parseInt(document.getElementById('f-tipo').value);
+      const descripcion = document.getElementById('f-descripcion').value.trim();
+      const montoRaw    = document.getElementById('f-monto').value;
+      const orden       = parseInt(document.getElementById('f-orden').value);
+      const esObligatorio = document.getElementById('f-obligatorio').value;
 
-    async function clonar() {
-      const idAnioOrigen  = parseInt(document.getElementById('c-origen').value);
-      const idAnioDestino = parseInt(document.getElementById('c-destino').value);
-      const alerta        = document.getElementById('clonar-alert');
-
-      if (!idAnioOrigen || !idAnioDestino) {
-        alerta.innerHTML = '<div class="alert alert-error">⚠ Seleccione ambos años</div>';
-        return;
-      }
-      if (idAnioOrigen === idAnioDestino) {
-        alerta.innerHTML = '<div class="alert alert-error">⚠ El año origen y destino no pueden ser el mismo</div>';
+      // Validar campos vacíos
+      if (!idAnio || !idTipoConc || !descripcion || !montoRaw || !orden) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos obligatorios</div>';
         return;
       }
 
-      try {
-        const clonados = await api.post('/conceptos/clonar', { idAnioOrigen, idAnioDestino });
-        toast(`${clonados.length} conceptos clonados correctamente`);
-        cerrarModalClonar();
+      // Validar monto negativo o cero
+      const monto = parseFloat(montoRaw);
+      if (isNaN(monto) || monto <= 0) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ El monto debe ser mayor a 0</div>';
+        return;
+      }
 
-        // Seleccionar el año destino en el filtro
-        document.getElementById('filtro-anio').value = idAnioDestino;
+      // Validar máximo 2 decimales
+      const partes = montoRaw.split('.');
+      if (partes[1] && partes[1].length > 2) {
+        alerta.innerHTML = '<div class="alert alert-error">⚠ El monto solo puede tener hasta 2 decimales</div>';
+        return;
+      }
+
+      const body = {
+        idAnio,
+        idTipoConc,
+        descripcion,
+        monto: parseFloat(monto.toFixed(2)),
+        orden,
+        esObligatorio,
+      };
+
+      try {
+        if (editandoId) {
+          await api.put(`/conceptos/${editandoId}`, body);
+          toast('Concepto actualizado');
+        } else {
+          await api.post('/conceptos', body);
+          toast('Concepto creado correctamente');
+        }
+        cerrarModal();
         cargarConceptos();
       } catch(e) {
-        alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al clonar'}</div>`;
+        alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al guardar'}</div>`;
       }
     }
-    function validarMonto(input) {
-  // No negativos
-  if (parseFloat(input.value) < 0) input.value = '';
-  // Solo 2 decimales
-  if (input.value.includes('.')) {
-    const partes = input.value.split('.');
-    if (partes[1]?.length > 2) input.value = parseFloat(input.value).toFixed(2);
-  }
-}
 
-    init();
+        async function eliminar(id) {
+          if (!confirm('¿Está seguro de eliminar este concepto?')) return;
+          try {
+            await api.delete(`/conceptos/${id}`);
+            toast('Concepto eliminado');
+            cargarConceptos();
+          } catch(e) {
+            toast('Error al eliminar', 'error');
+          }
+        }
+
+        function abrirModalClonar() {
+          document.getElementById('clonar-alert').innerHTML = '';
+          document.getElementById('c-origen').value  = '';
+          document.getElementById('c-destino').value = '';
+          document.getElementById('modal-clonar').classList.add('open');
+        }
+
+        function cerrarModalClonar() {
+          document.getElementById('modal-clonar').classList.remove('open');
+        }
+
+        async function clonar() {
+          const idAnioOrigen  = parseInt(document.getElementById('c-origen').value);
+          const idAnioDestino = parseInt(document.getElementById('c-destino').value);
+          const alerta        = document.getElementById('clonar-alert');
+
+          if (!idAnioOrigen || !idAnioDestino) {
+            alerta.innerHTML = '<div class="alert alert-error">⚠ Seleccione ambos años</div>';
+            return;
+          }
+          if (idAnioOrigen === idAnioDestino) {
+            alerta.innerHTML = '<div class="alert alert-error">⚠ El año origen y destino no pueden ser el mismo</div>';
+            return;
+          }
+
+          try {
+            const clonados = await api.post('/conceptos/clonar', { idAnioOrigen, idAnioDestino });
+            toast(`${clonados.length} conceptos clonados correctamente`);
+            cerrarModalClonar();
+
+            // Seleccionar el año destino en el filtro
+            document.getElementById('filtro-anio').value = idAnioDestino;
+            cargarConceptos();
+          } catch(e) {
+            alerta.innerHTML = `<div class="alert alert-error">✕ ${e.message || 'Error al clonar'}</div>`;
+          }
+        }
+        function validarMonto(input) {
+      // No negativos
+      if (parseFloat(input.value) < 0) input.value = '';
+      // Solo 2 decimales
+      if (input.value.includes('.')) {
+        const partes = input.value.split('.');
+        if (partes[1]?.length > 2) input.value = parseFloat(input.value).toFixed(2);
+      }
+    }
+
+        init();
 </script>
 </body>
 </html>

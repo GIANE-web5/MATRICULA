@@ -92,22 +92,31 @@
     });
 
     async function login() {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      const alerta   = document.getElementById('alert-login');
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const alerta   = document.getElementById('alert-login');
 
-      if (!username || !password) {
-        alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
-        return;
-      }
-      try {
-        const usuario = await api.post('/usuarios/login', { username, password });
-        session.set(usuario);
-        location.href = 'index.html';
-      } catch(e) {
-        alerta.innerHTML = '<div class="alert alert-error">✕ Usuario o contraseña incorrectos</div>';
-      }
-    }
+  if (!username || !password) {
+    alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
+    return;
+  }
+
+  try {
+    // 1. Login
+    const usuario = await api.post('/usuarios/login', { username, password });
+    session.set(usuario);
+
+    // 2. Cargar permisos del rol automáticamente
+    const permisos = await api.get(
+      `/usuarios/permisos-rol/${usuario.rol.idRol}`);
+    session.setPermisos(permisos);
+
+    location.href = 'index.html';
+  } catch(e) {
+    alerta.innerHTML =
+      '<div class="alert alert-error">✕ Usuario o contraseña incorrectos</div>';
+  }
+}
 
     async function abrirRegistro() {
       document.getElementById('registro-alert').innerHTML = '';

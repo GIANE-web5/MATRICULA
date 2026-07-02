@@ -101,39 +101,42 @@
 <div id="toast"></div>
 <script src="js/api.js"></script>
 <script>
-    const u = session.check();
-    loadSidebarUser();
-    setActiveNav();
+    (async () => {
+   session.check();
+   await cargarPermisosFrescos(); // no proteger, es libre
+   loadSidebarUser();
+   await cargarDashboard();
+ })();
 
-    function logout() {
-      session.clear();
-      location.href = 'login.html';
-    }
+     function logout() {
+       session.clear();
+       location.href = 'login.html';
+     }
 
-    async function cargarDashboard() {
-      try {
-        const [alumnos, aulas, anios] = await Promise.all([
-          api.get('/alumnos/buscar/nombre?texto='),
-          api.get('/aulas?idAnio=1'),
-          api.get('/anios')
-        ]);
+     async function cargarDashboard() {
+       try {
+         const [alumnos, aulas, anios] = await Promise.all([
+           api.get('/alumnos/buscar/nombre?texto='),
+           api.get('/aulas?idAnio=1'),
+           api.get('/anios')
+         ]);
 
-        document.getElementById('stat-alumnos').textContent = alumnos.length;
-        document.getElementById('stat-aulas').textContent = aulas.length;
+         document.getElementById('stat-alumnos').textContent = alumnos.length;
+         document.getElementById('stat-aulas').textContent = aulas.length;
 
-        const lista = document.getElementById('anios-lista');
-        lista.innerHTML = anios.map(a => `
-          <div class="badge badge-info" style="font-size:14px;padding:6px 18px">
-            📅 ${a.anio} — ${a.descripcion || 'Año académico'}
-          </div>
-        `).join('');
+         const lista = document.getElementById('anios-lista');
+         lista.innerHTML = anios.map(a => `
+           <div class="badge badge-info" style="font-size:14px;padding:6px 18px">
+             📅 ${a.anio} — ${a.descripcion || 'Año académico'}
+           </div>
+         `).join('');
 
-      } catch (e) {
-        toast('Error al cargar datos', 'error');
-      }
-    }
+       } catch (e) {
+         toast('Error al cargar datos', 'error');
+       }
+     }
 
-    cargarDashboard();
+     cargarDashboard();
 </script>
 </body>
 </html>
