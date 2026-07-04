@@ -27,21 +27,24 @@ public class AnioAcademicoController {
 
     @PostMapping
     public ResponseEntity<AnioAcademico> guardar(
-            @RequestBody AnioAcademico anio) {
-        return ResponseEntity.ok(service.guardar(anio, "admin"));
+            @RequestBody AnioAcademico anio,
+            @RequestParam String usuarioLogin) { // ← Agregado como parámetro en la URL
+        return ResponseEntity.ok(service.guardar(anio, usuarioLogin)); // ← Cambiado
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<AnioAcademico> actualizar(
             @PathVariable Integer id,
-            @RequestBody AnioAcademico anio) {
-        return ResponseEntity.ok(service.actualizar(id, anio, "admin"));
+            @RequestBody AnioAcademico anio,
+            @RequestParam String usuarioLogin) { // ← Agregado como parámetro en la URL
+        return ResponseEntity.ok(service.actualizar(id, anio, usuarioLogin)); // ← Cambiado
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(
-            @PathVariable Integer id) {
-        service.eliminar(id, "admin");
+            @PathVariable Integer id,
+            @RequestParam String usuarioLogin) { // ← Agregado como parámetro en la URL
+        service.eliminar(id, usuarioLogin); // ← Cambiado
         return ResponseEntity.noContent().build();
     }
 }

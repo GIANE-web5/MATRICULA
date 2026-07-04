@@ -19,6 +19,7 @@ public class ConceptoController {
     public List<Concepto> listar(@RequestParam Integer idAnio) {
         return service.listarPorAnio(idAnio);
     }
+
     @GetMapping("/{id}")
     public ResponseEntity<Concepto> obtener(@PathVariable Integer id) {
         return ResponseEntity.ok(service.obtener(id));
@@ -34,28 +35,34 @@ public class ConceptoController {
         c.setEsObligatorio(((String) body.get("esObligatorio")).charAt(0));
         Integer idAnio     = (Integer) body.get("idAnio");
         Integer idTipoConc = (Integer) body.get("idTipoConc");
-        return ResponseEntity.ok(service.guardar(c, idAnio, idTipoConc, "admin"));
+        String usuario     = (String) body.get("usuarioLogin"); // ← Agregado
+
+        return ResponseEntity.ok(service.guardar(c, idAnio, idTipoConc, usuario)); // ← Cambiado
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Concepto> actualizar(
             @PathVariable Integer id,
-            @RequestBody Concepto concepto) {
-        return ResponseEntity.ok(service.actualizar(id, concepto, "admin"));
+            @RequestBody Concepto concepto,
+            @RequestParam String usuarioLogin) { // ← Pasado como parámetro en la URL
+        return ResponseEntity.ok(service.actualizar(id, concepto, usuarioLogin)); // ← Cambiado
     }
 
     @PostMapping("/clonar")
     public ResponseEntity<List<Concepto>> clonar(
-            @RequestBody Map<String, Integer> body) {
-        return ResponseEntity.ok(service.clonarPorAnio(
-                body.get("idAnioOrigen"), body.get("idAnioDestino"), "admin"));
+            @RequestBody Map<String, Object> body) { // ← Cambiado de Integer a Object para soportar el String del usuario
+        Integer idAnioOrigen = (Integer) body.get("idAnioOrigen");
+        Integer idAnioDestino = (Integer) body.get("idAnioDestino");
+        String usuario = (String) body.get("usuarioLogin"); // ← Agregado
+
+        return ResponseEntity.ok(service.clonarPorAnio(idAnioOrigen, idAnioDestino, usuario)); // ← Cambiado
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(
-            @PathVariable Integer id) {
-        service.eliminar(id, "admin");
+            @PathVariable Integer id,
+            @RequestParam String usuarioLogin) { // ← Agregado
+        service.eliminar(id, usuarioLogin); // ← Cambiado
         return ResponseEntity.noContent().build();
     }
-
 }

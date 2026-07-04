@@ -22,6 +22,7 @@ public class UsuarioController {
     public List<Usuario> listar() {
         return service.listar();
     }
+
     @GetMapping("/permisos-rol/{idRol}")
     public ResponseEntity<?> permisosPorRol(@PathVariable Integer idRol) {
         List<RolFuncionalidad> permisos = rolFuncService.listarPorRol(idRol);
@@ -41,7 +42,9 @@ public class UsuarioController {
         u.setPasswordHash((String) body.get("password"));
         u.setNombreCompleto((String) body.get("nombreCompleto"));
         Integer idRol = (Integer) body.get("idRol");
-        return ResponseEntity.ok(service.guardar(u, idRol, "admin"));
+        String usuario = (String) body.get("usuarioLogin"); // ← Agregado
+
+        return ResponseEntity.ok(service.guardar(u, idRol, usuario)); // ← Cambiado
     }
 
     @PutMapping("/{id}/cambiar-password")
@@ -61,8 +64,10 @@ public class UsuarioController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
-        service.eliminar(id);
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Integer id,
+            @RequestParam String usuarioLogin) { // ← Agregado
+        service.eliminar(id, usuarioLogin); // ← Cambiado asumiendo que tu servicio de usuario también recibe el usuario auditor
         return ResponseEntity.noContent().build();
     }
 }

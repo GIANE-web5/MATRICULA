@@ -331,7 +331,7 @@ function validarDocumento() {
       } catch(e) { toast('Error al cargar alumno', 'error'); }
     }
 
-    async function guardar() {
+   async function guardar() {
   const alerta = document.getElementById('modal-alert');
 
   const apPaterno    = document.getElementById('f-apPaterno').value.trim();
@@ -339,6 +339,7 @@ function validarDocumento() {
   const nombre       = document.getElementById('f-nombre').value.trim();
   const nroDocumento = document.getElementById('f-nroDoc').value.trim();
   const idTipoDoc    = parseInt(document.getElementById('f-tipoDoc').value);
+  const usuarioLogin = session.get()?.username; // ← toma el usuario logueado
 
   if (!apPaterno || !apMaterno || !nombre || !nroDocumento || !idTipoDoc) {
     alerta.innerHTML = '<div class="alert alert-error">⚠ Complete los campos obligatorios</div>';
@@ -357,8 +358,9 @@ function validarDocumento() {
     nombre,
     nroDocumento,
     idTipoDoc,
-    sexo:         document.getElementById('f-sexo').value || null,
-    fecNacimiento:document.getElementById('f-fecNac').value || null,
+    sexo:          document.getElementById('f-sexo').value || null,
+    fecNacimiento: document.getElementById('f-fecNac').value || null,
+    usuarioLogin,  // ← se envía al backend
   };
 
   try {
@@ -377,13 +379,16 @@ function validarDocumento() {
 }
 
     async function eliminar(id) {
-      if (!confirm('¿Está seguro de eliminar este alumno?')) return;
-      try {
-        await api.delete(`/alumnos/${id}`);
-        toast('Alumno eliminado');
-        cargarAlumnos();
-      } catch(e) { toast('Error al eliminar', 'error'); }
-    }
+  if (!confirm('¿Está seguro de eliminar este alumno?')) return;
+  const usuarioLogin = session.get()?.username;
+  try {
+    await api.delete(`/alumnos/${id}?usuarioLogin=${usuarioLogin}`);
+    toast('Alumno eliminado');
+    cargarAlumnos();
+  } catch(e) {
+    toast('Error al eliminar', 'error');
+  }
+}
 
     cargarTiposDocs();
     cargarAlumnos();

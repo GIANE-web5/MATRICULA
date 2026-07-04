@@ -39,7 +39,8 @@ public class AlumnoController {
         alumno.setNombre((String) body.get("nombre"));
         alumno.setNroDocumento((String) body.get("nroDocumento"));
         Integer idTipoDoc = (Integer) body.get("idTipoDoc");
-        return ResponseEntity.ok(service.guardar(alumno, idTipoDoc, "admin"));
+        String  usuario   = (String)  body.get("usuarioLogin");
+        return ResponseEntity.ok(service.guardar(alumno, idTipoDoc, usuario));
     }
 
     @PutMapping("/{id}")
@@ -52,13 +53,15 @@ public class AlumnoController {
         datos.setNombre((String) body.get("nombre"));
         datos.setNroDocumento((String) body.get("nroDocumento"));
         Integer idTipoDoc = (Integer) body.get("idTipoDoc");
-        return ResponseEntity.ok(service.actualizar(id, datos, idTipoDoc, "admin"));
+        String  usuario   = (String)  body.get("usuarioLogin");
+        return ResponseEntity.ok(service.actualizar(id, datos, idTipoDoc, usuario));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(
-            @PathVariable Integer id) {
-        service.eliminar(id, "admin");
+            @PathVariable Integer id,
+            @RequestParam String usuarioLogin) {
+        service.eliminar(id, usuarioLogin);
         return ResponseEntity.noContent().build();
     }
 }

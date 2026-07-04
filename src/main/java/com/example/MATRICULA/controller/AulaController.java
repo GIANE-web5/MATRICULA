@@ -27,14 +27,16 @@ public class AulaController {
         Integer idNivel  = (Integer) body.get("idNivel");
         Integer grado    = (Integer) body.get("grado");
         String  seccion  = (String)  body.get("seccion");
+        String  usuario  = (String)  body.get("usuarioLogin");
         return ResponseEntity.ok(
-                service.guardar(idAnio, idNivel, grado, seccion, "admin"));
+                service.guardar(idAnio, idNivel, grado, seccion, usuario));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(
-            @PathVariable Integer id) {
-        service.eliminar(id, "admin");
+            @PathVariable Integer id,
+            @RequestParam String usuarioLogin) { // ← agrega esto
+        service.eliminar(id, usuarioLogin); // ← cambia "admin"
         return ResponseEntity.noContent().build();
     }
 }

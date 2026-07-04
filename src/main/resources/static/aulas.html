@@ -42,7 +42,6 @@
 
         <div class="page-body">
 
-            <!-- Filtro por año -->
             <div class="card" style="margin-bottom:20px">
                 <div class="card-body" style="padding:14px 20px">
                     <div style="display:flex;align-items:center;gap:16px">
@@ -55,7 +54,6 @@
                 </div>
             </div>
 
-            <!-- Tabla -->
             <div class="card">
                 <div class="card-header">
                     <h2>Listado de aulas</h2>
@@ -95,7 +93,6 @@
     </div>
 </div>
 
-<!-- MODAL NUEVA AULA -->
 <div class="modal-overlay" id="modal-overlay">
     <div class="modal">
         <div class="modal-header">
@@ -136,7 +133,6 @@
                 </div>
             </div>
 
-            <!-- Preview -->
             <div id="preview-aula" style="display:none;margin-top:16px;
            background:var(--bg);border-radius:8px;padding:14px;text-align:center">
                 <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">Aula a crear</p>
@@ -210,26 +206,15 @@
     }
 
     function aplicarPermisosUI() {
-  const page = location.pathname.split('/').pop();
-  const btnNuevo   = document.getElementById('btn-nuevo');
-  const btnClonar  = document.getElementById('btn-clonar');
-
-  if (btnNuevo)  btnNuevo.style.display  =
-    session.puedeInsertar(page) ? 'inline-flex' : 'none';
-  if (btnClonar) btnClonar.style.display =
-    session.puedeInsertar(page) ? 'inline-flex' : 'none';
-}
-
-    function aplicarPermisosUI() {
       const page = location.pathname.split('/').pop();
+      const btnNuevo   = document.getElementById('btn-nuevo');
+      const btnClonar  = document.getElementById('btn-clonar');
 
-  // Botón nuevo
-  const btnNuevo = document.getElementById('btn-nuevo');
-  if (btnNuevo) {
-    btnNuevo.style.display =
-      session.puedeInsertar(page) ? 'inline-flex' : 'none';
-  }
-}
+      if (btnNuevo)  btnNuevo.style.display  =
+        session.puedeInsertar(page) ? 'inline-flex' : 'none';
+      if (btnClonar) btnClonar.style.display =
+        session.puedeInsertar(page) ? 'inline-flex' : 'none';
+    }
 
     function actualizarPreview() {
       const anioEl   = document.getElementById('f-anio');
@@ -272,40 +257,40 @@
     }
 
     function renderTabla(data) {
-  const tbody = document.getElementById('tabla-aulas');
-  const page  = location.pathname.split('/').pop();
-  const puedeEliminar = session.puedeEliminar(page);
+      const tbody = document.getElementById('tabla-aulas');
+      const page  = location.pathname.split('/').pop();
+      const puedeEliminar = session.puedeEliminar(page);
 
-  if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="8"
-      style="text-align:center;padding:40px;color:var(--text-muted)">
-      No hay aulas registradas para este año</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = data.map((a, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td><span class="badge ${nivelBadge(a.nivel?.nombre)}">
-        ${a.nivel?.nombre || '—'}
-      </span></td>
-      <td>${a.grado}°</td>
-      <td><strong>${a.seccion}</strong></td>
-      <td>${a.anioAcademico?.anio || '—'}</td>
-      <td><span style="color:var(--text-muted);font-size:12px">
-        Ver matrículas
-      </span></td>
-      <td><span class="badge ${a.estado === 'A' ? 'badge-success' : 'badge-danger'}">
-        ${a.estado === 'A' ? 'Activa' : 'Inactiva'}
-      </span></td>
-      <td>
-        ${puedeEliminar
-          ? `<button class="btn btn-danger btn-sm"
-                     onclick="eliminar(${a.idAula})">🗑 Eliminar</button>`
-          : '<span style="color:var(--text-muted);font-size:12px">Solo lectura</span>'}
-      </td>
-    </tr>
-  `).join('');
-}
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="8"
+          style="text-align:center;padding:40px;color:var(--text-muted)">
+          No hay aulas registradas para este año</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map((a, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td><span class="badge ${nivelBadge(a.nivel?.nombre)}">
+            ${a.nivel?.nombre || '—'}
+          </span></td>
+          <td>${a.grado}°</td>
+          <td><strong>${a.seccion}</strong></td>
+          <td>${a.anioAcademico?.anio || '—'}</td>
+          <td><span style="color:var(--text-muted);font-size:12px">
+            Ver matrículas
+          </span></td>
+          <td><span class="badge ${a.estado === 'A' ? 'badge-success' : 'badge-danger'}">
+            ${a.estado === 'A' ? 'Activa' : 'Inactiva'}
+          </span></td>
+          <td>
+            ${puedeEliminar
+              ? `<button class="btn btn-danger btn-sm"
+                         onclick="eliminar(${a.idAula})">🗑 Eliminar</button>`
+              : '<span style="color:var(--text-muted);font-size:12px">Solo lectura</span>'}
+          </td>
+        </tr>
+      `).join('');
+    }
 
     function nivelBadge(nombre) {
       if (!nombre) return 'badge-info';
@@ -350,6 +335,7 @@
       const grado   = parseInt(document.getElementById('f-grado').value);
       const seccion = document.getElementById('f-seccion').value;
       const alerta  = document.getElementById('modal-alert');
+      const usuarioLogin = session.get()?.username; // ← Agregado
 
       if (!idAnio || !idNivel || !grado || !seccion) {
         alerta.innerHTML = '<div class="alert alert-error">⚠ Complete todos los campos</div>';
@@ -357,7 +343,8 @@
       }
 
       try {
-        await api.post('/aulas', { idAnio, idNivel, grado, seccion });
+        // ← Agregado el usuarioLogin al cuerpo de la petición
+        await api.post('/aulas', { idAnio, idNivel, grado, seccion, usuarioLogin });
         toast('Aula creada correctamente');
         cerrarModal();
         cargarAulas();
@@ -368,15 +355,17 @@
 
     async function eliminar(id) {
       if (!confirm('¿Está seguro de eliminar esta aula?')) return;
+      const usuarioLogin = session.get()?.username; // ← Agregado
+
       try {
-        await api.delete(`/aulas/${id}`);
+        // ← Agregado el usuarioLogin a la URL
+        await api.delete(`/aulas/${id}?usuarioLogin=${usuarioLogin}`);
         toast('Aula eliminada');
         cargarAulas();
       } catch(e) {
         toast('Error al eliminar', 'error');
       }
     }
-
 
 </script>
 </body>

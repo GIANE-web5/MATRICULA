@@ -28,11 +28,16 @@ public class MatriculaController {
     }
 
     @PostMapping
-    public ResponseEntity<Matricula> matricular(@RequestBody Map<String, Integer> body) {
+    public ResponseEntity<Matricula> matricular(@RequestBody Map<String, Object> body) { // ← Cambiado a Object
+        Integer idAlumno = (Integer) body.get("idAlumno");
+        Integer idAula   = (Integer) body.get("idAula");
+        Integer idAnio   = (Integer) body.get("idAnio");
+        String usuario   = (String) body.get("usuarioLogin"); // ← Agregado
+
         return ResponseEntity.ok(service.matricular(
-                body.get("idAlumno"),
-                body.get("idAula"),
-                body.get("idAnio"),
-                "admin"));
+                idAlumno,
+                idAula,
+                idAnio,
+                usuario)); // ← Cambiado "admin" por la variable usuario
     }
 }

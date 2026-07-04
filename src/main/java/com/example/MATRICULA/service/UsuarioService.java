@@ -47,7 +47,7 @@ public class UsuarioService {
         repo.save(usuario);
     }
 
-    public void eliminar(Integer id) {
+    public void eliminar(Integer id, String usuarioLogin) {
         Usuario existe = obtener(id);
 
         // Validar que no sea superusuario

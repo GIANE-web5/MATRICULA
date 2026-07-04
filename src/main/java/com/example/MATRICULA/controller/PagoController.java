@@ -25,11 +25,16 @@ public class PagoController {
 
     @PostMapping("/pagar")
     public ResponseEntity<Recibo> pagar(
-            @RequestBody Map<String, Integer> body) {
+            @RequestBody Map<String, Object> body) { // ← Cambiado a Object
+        Integer idAlumno = (Integer) body.get("idAlumno");
+        Integer idAnio   = (Integer) body.get("idAnio");
+        Integer idCuota  = (Integer) body.get("idCuota");
+        String usuario   = (String) body.get("usuarioLogin"); // ← Agregado
+
         return ResponseEntity.ok(service.pagar(
-                body.get("idAlumno"),
-                body.get("idAnio"),
-                body.get("idCuota"),
-                "admin"));
+                idAlumno,
+                idAnio,
+                idCuota,
+                usuario)); // ← Cambiado "admin" por la variable
     }
 }
