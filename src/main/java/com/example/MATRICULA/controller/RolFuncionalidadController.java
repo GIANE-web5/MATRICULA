@@ -16,18 +16,30 @@ public class RolFuncionalidadController {
     private final RolFuncionalidadService service;
 
     @GetMapping("/rol/{idRol}")
-    public List<RolFuncionalidad> listarPorRol(@PathVariable Integer idRol) {
-        return service.listarPorRol(idRol);
+    public ResponseEntity<?> listarPorRol(@PathVariable Integer idRol) {
+        try {
+            return ResponseEntity.ok(service.listarPorRol(idRol));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PostMapping("/aplicar/{idRol}")
     public ResponseEntity<?> aplicar(
             @PathVariable Integer idRol,
-            @RequestBody List<Map<String, Object>> permisos,
-            @RequestParam String usuarioLogin) { // ← Agregado aquí como parámetro de URL
+            @RequestBody List<Map<String, Object>> permisos) {
         try {
-            service.aplicarPermisos(idRol, permisos, usuarioLogin); // ← Cambiado "admin" por la variable
-            return ResponseEntity.ok(Map.of("message", "Permisos aplicados correctamente"));
+            System.out.println("=== APLICAR PERMISOS ===");
+            System.out.println("idRol: " + idRol);
+            System.out.println("permisos recibidos: " + permisos.size());
+            permisos.forEach(p -> System.out.println("  >> " + p));
+
+            service.aplicarPermisos(idRol, permisos, "admin");
+
+            return ResponseEntity.ok(
+                    Map.of("message", "Permisos aplicados correctamente"));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest()
